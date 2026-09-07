@@ -15,6 +15,7 @@ router.get('/', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT o.*,
               COUNT(p.id) AS product_count,
+              COUNT(p.id) FILTER (WHERE p.is_made) AS made_count,
               COALESCE(SUM(p.price), 0) AS total_price,
               COALESCE(SUM(p.cost), 0) AS total_cost
          FROM orders o
@@ -101,7 +102,12 @@ router.patch('/:id', async (req, res, next) => {
       put('contact_method', String(f.contact_method).trim() || null);
     }
     if (f.payment_status !== undefined) put('payment_status', f.payment_status);
-    if (f.progress_status !== undefined) put('progress_status', f.progress_status);
+    // Progress: a value sets a manual override; progress_auto:true clears it so
+    // the order follows the value calculated from its products.
+    if (f.progress_auto === true) put('progress_override', null);
+    else if (f.progress_status !== undefined) {
+      put('progress_override', f.progress_status);
+    }
 
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
     vals.push(req.params.id);

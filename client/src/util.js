@@ -10,6 +10,7 @@ export const qtyOf = (x) => Math.max(1, Math.floor(Number(x) || 1));
 
 let keySeq = 0;
 const nextKey = () => `d${Date.now().toString(36)}${(keySeq++).toString(36)}`;
+export const newDraftKey = nextKey;
 
 // Suggested product cost = sum(material unit cost * quantity used).
 export const suggestedCostOf = (selected, catalog) => {
@@ -44,6 +45,19 @@ export const productToDraft = (p) => ({
   cost: String(p.cost ?? ''),
   costTouched: true,
   materials: (p.materials || []).map((m) => ({
+    material_id: m.material_id,
+    quantity_used: m.quantity_used,
+  })),
+});
+
+// The fields a premade preset fills into a product draft. Everything stays
+// editable afterward, same as a from-scratch product.
+export const presetToDraftPatch = (preset) => ({
+  name: preset.name || '',
+  price: String(preset.price ?? ''),
+  cost: String(preset.cost ?? ''),
+  costTouched: true,
+  materials: (preset.materials || []).map((m) => ({
     material_id: m.material_id,
     quantity_used: m.quantity_used,
   })),

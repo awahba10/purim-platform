@@ -18,8 +18,8 @@ const COLUMNS = [
 const NUMERIC = new Set(['product_count', 'total_price']);
 
 function progressClass(status) {
-  if (status === 'Delivered') return 'ok';
-  if (status === 'Made') return 'info';
+  if (status === 'Delivered' || status === 'All Made') return 'ok';
+  if (status === 'Some Made') return 'info';
   return 'warn';
 }
 
@@ -116,8 +116,16 @@ export default function AllOrders() {
                   </span>
                 </td>
                 <td>
-                  <span className={'badge ' + progressClass(o.progress_status)}>
+                  <span
+                    className={'badge ' + progressClass(o.progress_status)}
+                    title={
+                      o.progress_is_auto
+                        ? 'Auto from products'
+                        : 'Manually set'
+                    }
+                  >
                     {o.progress_status}
+                    {!o.progress_is_auto && ' •'}
                   </span>
                 </td>
                 <td>{new Date(o.created_at).toLocaleDateString()}</td>

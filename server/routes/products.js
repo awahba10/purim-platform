@@ -62,6 +62,7 @@ router.patch('/:id', async (req, res, next) => {
     if (f.price !== undefined && f.price !== '' && f.price !== null) {
       put('price', Number(f.price) || 0);
     }
+    if (f.is_made !== undefined) put('is_made', Boolean(f.is_made));
     if (sets.length) {
       vals.push(req.params.id);
       await client.query(

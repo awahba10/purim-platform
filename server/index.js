@@ -13,6 +13,7 @@ app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/materials', require('./routes/materials'));
+app.use('/api/presets', require('./routes/presets'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/financials', require('./routes/financials'));

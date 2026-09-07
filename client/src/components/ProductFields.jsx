@@ -1,11 +1,24 @@
-import { money, round2, suggestedCostOf } from '../util';
+import { money, round2, suggestedCostOf, presetToDraftPatch } from '../util';
 import MaterialPicker from './MaterialPicker';
 
 // Editable fields for a single product. `value` is a product draft (see util.js).
 // Used by New Order, the Products tab, and the order detail view.
-export default function ProductFields({ value, onChange, catalog, onRemove, title }) {
+export default function ProductFields({
+  value,
+  onChange,
+  catalog,
+  presets,
+  onRemove,
+  onDuplicate,
+  title,
+}) {
   const set = (patch) => onChange({ ...value, ...patch });
   const suggested = suggestedCostOf(value.materials, catalog);
+
+  const applyPreset = (id) => {
+    const preset = (presets || []).find((p) => String(p.id) === String(id));
+    if (preset) onChange({ ...value, ...presetToDraftPatch(preset) });
+  };
 
   const setMaterials = (materials) => {
     const next = { ...value, materials };
@@ -18,15 +31,42 @@ export default function ProductFields({ value, onChange, catalog, onRemove, titl
 
   return (
     <div className="product-fields">
-      {(title || onRemove) && (
+      {(title || onRemove || onDuplicate) && (
         <div className="pf-head">
           <strong>{title || 'Product'}</strong>
-          {onRemove && (
-            <button type="button" className="link-danger" onClick={onRemove}>
-              Remove
-            </button>
-          )}
+          <span className="pf-head-actions">
+            {onDuplicate && (
+              <button type="button" className="linkbtn" onClick={onDuplicate}>
+                Duplicate
+              </button>
+            )}
+            {onRemove && (
+              <button type="button" className="link-danger" onClick={onRemove}>
+                Remove
+              </button>
+            )}
+          </span>
         </div>
+      )}
+
+      {presets && presets.length > 0 && (
+        <label>
+          Start from a premade product
+          <select
+            value=""
+            onChange={(e) => {
+              applyPreset(e.target.value);
+              e.target.value = '';
+            }}
+          >
+            <option value="">— pick a preset to fill this product —</option>
+            {presets.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({money(p.price)})
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       <label>

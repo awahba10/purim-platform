@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { money } from '../util';
 
-// Searchable material selector. `value` is [{ material_id, quantity_used }].
+// Material selector. Every material shows as a tappable chip; the search box
+// only filters which chips are shown. `value` is [{ material_id, quantity_used }].
 export default function MaterialPicker({ catalog, value, onChange }) {
   const [q, setQ] = useState('');
 
@@ -13,19 +14,15 @@ export default function MaterialPicker({ catalog, value, onChange }) {
 
   const selectedIds = new Set(value.map((v) => v.material_id));
 
-  const results = useMemo(() => {
+  const chips = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return [];
     return catalog
-      .filter((m) => !selectedIds.has(m.id) && m.name.toLowerCase().includes(needle))
-      .slice(0, 8);
+      .filter((m) => !selectedIds.has(m.id))
+      .filter((m) => !needle || m.name.toLowerCase().includes(needle));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, q, value]);
 
-  const add = (id) => {
-    onChange([...value, { material_id: id, quantity_used: 1 }]);
-    setQ('');
-  };
+  const add = (id) => onChange([...value, { material_id: id, quantity_used: 1 }]);
   const setQty = (id, qty) =>
     onChange(value.map((v) => (v.material_id === id ? { ...v, quantity_used: qty } : v)));
   const remove = (id) => onChange(value.filter((v) => v.material_id !== id));
@@ -34,23 +31,32 @@ export default function MaterialPicker({ catalog, value, onChange }) {
     <div className="mp">
       <input
         className="mp-search"
-        placeholder="Search materials to add…"
+        placeholder="Filter materials…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
-      {q.trim() && (
-        <div className="mp-results">
-          {results.length === 0 && <div className="mp-empty">No matching materials</div>}
-          {results.map((m) => (
-            <button type="button" key={m.id} className="mp-result" onClick={() => add(m.id)}>
-              <span>{m.name}</span>
-              <span className="subtle">
-                {money(m.cost)} each · {m.quantity} in stock
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+
+      <div className="mp-chips">
+        {chips.length === 0 && (
+          <span className="subtle">
+            {catalog.length === 0
+              ? 'No materials yet — add them in the Materials tab.'
+              : 'No matching materials.'}
+          </span>
+        )}
+        {chips.map((m) => (
+          <button
+            type="button"
+            key={m.id}
+            className="chip"
+            onClick={() => add(m.id)}
+            title={`${money(m.cost)} each · ${m.quantity} in stock`}
+          >
+            + {m.name}
+            <span className="chip-cost">{money(m.cost)}</span>
+          </button>
+        ))}
+      </div>
 
       {value.length > 0 && (
         <div className="mp-selected">

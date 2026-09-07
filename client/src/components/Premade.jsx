@@ -1,34 +1,44 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money, productToDraft, draftToPayload } from '../util';
-import ProductFields from './ProductFields';
+import { money, suggestedCostOf, qtyOf } from '../util';
+import MaterialPicker from './MaterialPicker';
 
 const COLUMNS = [
-  { key: 'ticket_number', label: 'Ticket' },
-  { key: 'customer_name', label: 'Customer' },
-  { key: 'name', label: 'Product' },
-  { key: 'is_made', label: 'Made' },
+  { key: 'name', label: 'Name' },
   { key: 'cost', label: 'Cost' },
   { key: 'price', label: 'Price' },
-  { key: 'profit', label: 'Profit' },
-  { key: 'created_at', label: 'Created' },
 ];
 
-const NUMERIC = new Set(['cost', 'price', 'profit', 'is_made']);
+const NUMERIC = new Set(['cost', 'price']);
 
-export default function Products() {
-  const [products, setProducts] = useState([]);
+function emptyDraft() {
+  return { name: '', price: '', materials: [] };
+}
+
+function presetToDraft(p) {
+  return {
+    name: p.name || '',
+    price: String(p.price ?? ''),
+    materials: (p.materials || []).map((m) => ({
+      material_id: m.material_id,
+      quantity_used: m.quantity_used,
+    })),
+  };
+}
+
+export default function Premade() {
+  const [presets, setPresets] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
-  const [editing, setEditing] = useState(null); // { product, draft }
+  const [sort, setSort] = useState({ key: 'name', dir: 'asc' });
+  const [editing, setEditing] = useState(null); // { preset?, draft }
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = () =>
-    Promise.all([api.get('/products'), api.get('/materials')])
+    Promise.all([api.get('/presets'), api.get('/materials')])
       .then(([p, m]) => {
-        setProducts(p);
+        setPresets(p);
         setMaterials(m);
       })
       .catch((e) => setError(e.message));
@@ -39,13 +49,9 @@ export default function Products() {
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    let list = products;
+    let list = presets;
     if (needle) {
-      list = list.filter((p) =>
-        [p.name, p.ticket_number, p.customer_name].some((v) =>
-          (v || '').toLowerCase().includes(needle)
-        )
-      );
+      list = list.filter((p) => (p.name || '').toLowerCase().includes(needle));
     }
     const { key, dir } = sort;
     return [...list].sort((a, b) => {
@@ -54,9 +60,6 @@ export default function Products() {
       if (NUMERIC.has(key)) {
         av = Number(av);
         bv = Number(bv);
-      } else if (key === 'created_at') {
-        av = new Date(av).getTime();
-        bv = new Date(bv).getTime();
       } else {
         av = (av == null ? '' : String(av)).toLowerCase();
         bv = (bv == null ? '' : String(bv)).toLowerCase();
@@ -65,7 +68,7 @@ export default function Products() {
       if (av > bv) return dir === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [products, query, sort]);
+  }, [presets, query, sort]);
 
   const toggleSort = (key) =>
     setSort((s) =>
@@ -75,14 +78,21 @@ export default function Products() {
     );
 
   const save = async () => {
-    if (!editing.draft.name.trim()) return setError('The product needs a name.');
+    const d = editing.draft;
+    if (!d.name.trim()) return setError('Give the preset a name.');
     setBusy(true);
     setError('');
+    const body = {
+      name: d.name.trim(),
+      price: Number(d.price) || 0,
+      materials: d.materials.map((m) => ({
+        material_id: m.material_id,
+        quantity_used: qtyOf(m.quantity_used),
+      })),
+    };
     try {
-      await api.patch(
-        `/products/${editing.product.id}`,
-        draftToPayload(editing.draft, materials)
-      );
+      if (editing.preset) await api.patch(`/presets/${editing.preset.id}`, body);
+      else await api.post('/presets', body);
       setEditing(null);
       load();
     } catch (e) {
@@ -93,46 +103,35 @@ export default function Products() {
   };
 
   const remove = async (p) => {
-    if (
-      !window.confirm(
-        `Delete "${p.name}" (ticket ${p.ticket_number})? Its materials go back to stock.`
-      )
-    )
-      return;
+    if (!window.confirm(`Delete preset "${p.name}"?`)) return;
     try {
-      await api.del(`/products/${p.id}`);
+      await api.del(`/presets/${p.id}`);
       load();
     } catch (e) {
       setError(e.message);
     }
   };
 
-  const toggleMade = async (p) => {
-    setBusy(true);
-    setError('');
-    try {
-      await api.patch(`/products/${p.id}`, { is_made: !p.is_made });
-      load();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const draftCost = editing
+    ? suggestedCostOf(editing.draft.materials, materials)
+    : 0;
 
   return (
     <div className="panel">
-      <h1>Products</h1>
+      <h1>Premade Products</h1>
       <p className="subtle">
-        Every product from every order — one row each. Editing here changes the same
-        record the order shows.
+        Reusable recipes to speed up New Order. Pick one while adding a product and
+        it fills in the name, materials, cost, and price — all still editable. These
+        do not hold stock and are not part of order or inventory logic.
       </p>
-      <input
-        className="search"
-        placeholder="Search by product, ticket, or customer…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+
+      <button
+        className="primary"
+        onClick={() => setEditing({ draft: emptyDraft() })}
+      >
+        + New preset
+      </button>
+
       {error && <div className="error">{error}</div>}
 
       <div className="table-wrap">
@@ -153,27 +152,11 @@ export default function Products() {
             {rows.map((p) => (
               <tr
                 key={p.id}
-                onClick={() => setEditing({ product: p, draft: productToDraft(p) })}
+                onClick={() => setEditing({ preset: p, draft: presetToDraft(p) })}
               >
-                <td>{p.ticket_number}</td>
-                <td>{p.customer_name}</td>
                 <td>{p.name}</td>
-                <td>
-                  <button
-                    className={'made-toggle ' + (p.is_made ? 'on' : 'off')}
-                    disabled={busy}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMade(p);
-                    }}
-                  >
-                    {p.is_made ? 'Made' : 'Not made'}
-                  </button>
-                </td>
                 <td>{money(p.cost)}</td>
                 <td>{money(p.price)}</td>
-                <td>{money(p.profit)}</td>
-                <td>{new Date(p.created_at).toLocaleDateString()}</td>
                 <td className="subtle">
                   {p.materials.length
                     ? p.materials
@@ -197,7 +180,7 @@ export default function Products() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={COLUMNS.length + 2} className="subtle">
-                  No products yet — create an order.
+                  No presets yet.
                 </td>
               </tr>
             )}
@@ -209,7 +192,7 @@ export default function Products() {
         <div className="modal-backdrop" onClick={() => setEditing(null)}>
           <div className="modal wide" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <h2>Edit product · ticket {editing.product.ticket_number}</h2>
+              <h2>{editing.preset ? 'Edit preset' : 'New preset'}</h2>
               <button
                 className="icon-btn"
                 onClick={() => setEditing(null)}
@@ -218,14 +201,60 @@ export default function Products() {
                 ✕
               </button>
             </div>
-            <ProductFields
-              value={editing.draft}
-              catalog={materials}
-              onChange={(next) => setEditing((cur) => ({ ...cur, draft: next }))}
-            />
+
+            <div className="product-fields">
+              <label>
+                Name
+                <input
+                  value={editing.draft.name}
+                  onChange={(e) =>
+                    setEditing((c) => ({
+                      ...c,
+                      draft: { ...c.draft, name: e.target.value },
+                    }))
+                  }
+                  placeholder="Classic tray"
+                />
+              </label>
+
+              <div>
+                <div className="subtle" style={{ marginBottom: 6 }}>Materials used</div>
+                <MaterialPicker
+                  catalog={materials}
+                  value={editing.draft.materials}
+                  onChange={(next) =>
+                    setEditing((c) => ({ ...c, draft: { ...c.draft, materials: next } }))
+                  }
+                />
+              </div>
+
+              <div className="row">
+                <label>
+                  Cost (auto)
+                  <input value={money(draftCost)} readOnly />
+                  <span className="hint">Summed from the materials above.</span>
+                </label>
+                <label>
+                  Price
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editing.draft.price}
+                    onChange={(e) =>
+                      setEditing((c) => ({
+                        ...c,
+                        draft: { ...c.draft, price: e.target.value },
+                      }))
+                    }
+                    placeholder="0.00"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="modal-actions">
               <button className="primary" onClick={save} disabled={busy}>
-                Save changes
+                {busy ? 'Saving…' : 'Save preset'}
               </button>
               <button onClick={() => setEditing(null)}>Cancel</button>
             </div>

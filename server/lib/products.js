@@ -1,27 +1,48 @@
 // Shared helpers for products, which now always belong to an order.
 
-const toProduct = (p) => ({
-  ...p,
-  cost: Number(p.cost),
-  price: Number(p.price),
-  profit: Number(p.price) - Number(p.cost),
-  materials: (p.materials || []).map((m) => ({
+const mapMaterials = (list) =>
+  (list || []).map((m) => ({
     material_id: m.material_id,
     material_name: m.material_name,
     unit_cost: Number(m.unit_cost),
     quantity_used: Number(m.quantity_used),
     line_cost: Number(m.unit_cost) * Number(m.quantity_used),
-  })),
+  }));
+
+const toProduct = (p) => ({
+  ...p,
+  cost: Number(p.cost),
+  price: Number(p.price),
+  profit: Number(p.price) - Number(p.cost),
+  is_made: Boolean(p.is_made),
+  materials: mapMaterials(p.materials),
 });
 
-const toOrder = (o) => ({
-  ...o,
-  product_count: Number(o.product_count || 0),
-  total_price: Number(o.total_price || 0),
-  total_cost: Number(o.total_cost || 0),
-  total_profit: Number(o.total_price || 0) - Number(o.total_cost || 0),
-  products: (o.products || []).map(toProduct),
-});
+function progressComputed(productCount, madeCount) {
+  if (madeCount === 0) return 'None Made';
+  if (productCount > 0 && madeCount === productCount) return 'All Made';
+  return 'Some Made';
+}
+
+const toOrder = (o) => {
+  const productCount = Number(o.product_count || 0);
+  const madeCount = Number(o.made_count || 0);
+  const computed = progressComputed(productCount, madeCount);
+  const override = o.progress_override != null ? o.progress_override : null;
+  return {
+    ...o,
+    product_count: productCount,
+    made_count: madeCount,
+    total_price: Number(o.total_price || 0),
+    total_cost: Number(o.total_cost || 0),
+    total_profit: Number(o.total_price || 0) - Number(o.total_cost || 0),
+    progress_computed: computed,
+    progress_override: override,
+    progress_status: override != null ? override : computed,
+    progress_is_auto: override == null,
+    products: (o.products || []).map(toProduct),
+  };
+};
 
 // Normalize an incoming materials array: dedupe by id, whole quantities >= 1.
 function cleanMaterials(input) {
@@ -40,21 +61,31 @@ function cleanMaterials(input) {
   return out;
 }
 
-// Attach a materials[] array (name + unit cost + quantity) to each product row.
-async function withMaterials(db, products) {
-  if (!products.length) return [];
-  const { rows } = await db.query(
-    `SELECT pm.product_id, pm.material_id, pm.quantity_used,
+// Attach a materials[] array (name + unit cost + quantity) to each row, joining
+// through a link table. Works for products (product_materials) and presets
+// (preset_materials).
+async function attachMaterials(db, rows, { linkTable, fk }) {
+  if (!rows.length) return [];
+  const { rows: links } = await db.query(
+    `SELECT lk.${fk} AS owner_id, lk.material_id, lk.quantity_used,
             m.name AS material_name, m.cost AS unit_cost
-       FROM product_materials pm
-       JOIN materials m ON m.id = pm.material_id
-      WHERE pm.product_id = ANY($1::int[])
+       FROM ${linkTable} lk
+       JOIN materials m ON m.id = lk.material_id
+      WHERE lk.${fk} = ANY($1::int[])
       ORDER BY m.name`,
-    [products.map((p) => p.id)]
+    [rows.map((r) => r.id)]
   );
-  const byProduct = {};
-  for (const r of rows) (byProduct[r.product_id] || (byProduct[r.product_id] = [])).push(r);
-  return products.map((p) => ({ ...p, materials: byProduct[p.id] || [] }));
+  const byOwner = {};
+  for (const r of links) (byOwner[r.owner_id] || (byOwner[r.owner_id] = [])).push(r);
+  return rows.map((r) => ({ ...r, materials: byOwner[r.id] || [] }));
+}
+
+// Attach a materials[] array to product rows.
+function withMaterials(db, products) {
+  return attachMaterials(db, products, {
+    linkTable: 'product_materials',
+    fk: 'product_id',
+  });
 }
 
 // Suggested cost = sum(material unit cost * quantity used).
@@ -131,6 +162,7 @@ async function fetchOrderFull(db, orderId) {
   const { rows: orders } = await db.query(
     `SELECT o.*,
             (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id) AS product_count,
+            (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id AND p.is_made) AS made_count,
             (SELECT COALESCE(SUM(p.price), 0) FROM products p WHERE p.order_id = o.id) AS total_price,
             (SELECT COALESCE(SUM(p.cost), 0) FROM products p WHERE p.order_id = o.id) AS total_cost
        FROM orders o WHERE o.id = $1`,
@@ -148,7 +180,9 @@ async function fetchOrderFull(db, orderId) {
 module.exports = {
   toProduct,
   toOrder,
+  mapMaterials,
   cleanMaterials,
+  attachMaterials,
   withMaterials,
   suggestedCost,
   insertProduct,

@@ -3,10 +3,18 @@ import Sidebar from './components/Sidebar';
 import NewOrder from './components/NewOrder';
 import AllOrders from './components/AllOrders';
 import Materials from './components/Materials';
+import Premade from './components/Premade';
 import Products from './components/Products';
 import Financials from './components/Financials';
 
-const TABS = ['New Order', 'All Orders', 'Materials', 'Products', 'Financials'];
+const TABS = [
+  'New Order',
+  'All Orders',
+  'Materials',
+  'Premade Products',
+  'Products',
+  'Financials',
+];
 
 export default function App() {
   const [tab, setTab] = useState('New Order');
@@ -20,6 +28,7 @@ export default function App() {
         )}
         {tab === 'All Orders' && <AllOrders />}
         {tab === 'Materials' && <Materials />}
+        {tab === 'Premade Products' && <Premade />}
         {tab === 'Products' && <Products />}
         {tab === 'Financials' && <Financials />}
       </main>

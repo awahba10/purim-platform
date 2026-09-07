@@ -4,7 +4,7 @@ import { money, productToDraft, draftToPayload, newProductDraft } from '../util'
 import ProductFields from './ProductFields';
 
 const PAYMENT = ['Not Paid', 'Paid'];
-const PROGRESS = ['Not Made', 'Made', 'Delivered'];
+const PROGRESS = ['None Made', 'Some Made', 'All Made', 'Delivered'];
 
 function Field({ label, children }) {
   return (
@@ -18,6 +18,7 @@ function Field({ label, children }) {
 export default function OrderDetail({ id, onClose, onChanged }) {
   const [order, setOrder] = useState(null);
   const [materials, setMaterials] = useState([]);
+  const [presets, setPresets] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
@@ -36,8 +37,23 @@ export default function OrderDetail({ id, onClose, onChanged }) {
   useEffect(() => {
     load();
     api.get('/materials').then(setMaterials).catch(() => {});
+    api.get('/presets').then(setPresets).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const toggleMade = async (p) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/products/${p.id}`, { is_made: !p.is_made });
+      await load();
+      if (onChanged) onChanged();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const patchOrder = async (body) => {
     setBusy(true);
@@ -164,6 +180,19 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                       {s}
                     </button>
                   ))}
+                  <button
+                    disabled={busy || order.progress_is_auto}
+                    className={order.progress_is_auto ? 'pill active' : 'pill'}
+                    onClick={() => patchOrder({ progress_auto: true })}
+                    title="Follow the value calculated from this order's products"
+                  >
+                    Auto
+                  </button>
+                </div>
+                <div className="hint">
+                  {order.progress_is_auto
+                    ? `Auto from products: ${order.progress_status}`
+                    : `Manually set · calculated is ${order.progress_computed}`}
                 </div>
               </div>
             </div>
@@ -230,7 +259,12 @@ export default function OrderDetail({ id, onClose, onChanged }) {
             {order.products.map((p) => (
               <div className="product-card" key={p.id}>
                 <div className="pc-top">
-                  <strong>{p.name}</strong>
+                  <strong>
+                    {p.name}{' '}
+                    <span className={'badge ' + (p.is_made ? 'ok' : 'warn')}>
+                      {p.is_made ? 'Made' : 'Not made'}
+                    </span>
+                  </strong>
                   <span>{money(p.price)}</span>
                 </div>
                 <div className="subtle">
@@ -248,6 +282,9 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 {p.notes && <div className="subtle">Notes: {p.notes}</div>}
                 {p.gift_message && <div className="subtle">Message: {p.gift_message}</div>}
                 <div className="pc-actions">
+                  <button disabled={busy} onClick={() => toggleMade(p)}>
+                    {p.is_made ? 'Mark not made' : 'Mark made'}
+                  </button>
                   <button
                     onClick={() =>
                       setProductModal({ mode: 'edit', product: p, draft: productToDraft(p) })
@@ -316,6 +353,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
             <ProductFields
               value={productModal.draft}
               catalog={materials}
+              presets={presets}
               onChange={(next) => setProductModal((pm) => ({ ...pm, draft: next }))}
             />
             <div className="modal-actions">

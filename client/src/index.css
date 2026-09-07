@@ -276,6 +276,23 @@ td.right button {
   font-size: 12px;
   font-weight: 600;
 }
+
+.made-toggle {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.made-toggle.on {
+  background: var(--ok-bg);
+  color: var(--ok);
+  border-color: var(--ok-bg);
+}
+.made-toggle.off {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-color: var(--warn-bg);
+}
 .badge.ok {
   background: var(--ok-bg);
   color: var(--ok);
@@ -366,6 +383,7 @@ td.right button {
 }
 .pill-group {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
 }
@@ -492,6 +510,11 @@ td.right button {
 .pf-head strong {
   font-size: 14px;
 }
+.pf-head-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 
 /* ProductFields is used both inside .form and bare inside modals, so it
    restates the label layout instead of relying on a .form ancestor. */
@@ -563,29 +586,39 @@ td.right button {
   flex-direction: column;
   gap: 8px;
 }
-.mp-results {
+.mp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 148px;
+  overflow-y: auto;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  overflow: hidden;
   background: #fff;
 }
-.mp-result {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  border: none;
-  border-bottom: 1px solid var(--line);
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   background: #fff;
-  padding: 8px 10px;
-  text-align: left;
-  border-radius: 0;
+  padding: 5px 10px;
+  font-size: 13px;
+  white-space: nowrap;
 }
-.mp-result:last-child {
-  border-bottom: none;
-}
-.mp-result:hover {
+.chip:hover {
   background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.chip-cost {
+  color: var(--muted);
+  font-size: 11px;
+}
+.chip:hover .chip-cost {
+  color: var(--brand);
 }
 .mp-empty {
   padding: 8px 10px;

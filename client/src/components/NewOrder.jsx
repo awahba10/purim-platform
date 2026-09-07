@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money, newProductDraft, draftToPayload, suggestedCostOf } from '../util';
+import {
+  money,
+  newProductDraft,
+  newDraftKey,
+  draftToPayload,
+  suggestedCostOf,
+} from '../util';
 import ProductFields from './ProductFields';
 
 export default function NewOrder({ onCreated }) {
   const [materials, setMaterials] = useState([]);
+  const [presets, setPresets] = useState([]);
   const [customer, setCustomer] = useState({
     customer_name: '',
     phone: '',
@@ -16,6 +23,7 @@ export default function NewOrder({ onCreated }) {
 
   useEffect(() => {
     api.get('/materials').then(setMaterials).catch((e) => setError(e.message));
+    api.get('/presets').then(setPresets).catch(() => {});
   }, []);
 
   const setC = (k, v) => setCustomer((c) => ({ ...c, [k]: v }));
@@ -23,6 +31,15 @@ export default function NewOrder({ onCreated }) {
     setProducts((ps) => ps.map((p, idx) => (idx === i ? next : p)));
   const addProduct = () => setProducts((ps) => [...ps, newProductDraft()]);
   const removeProduct = (i) => setProducts((ps) => ps.filter((_, idx) => idx !== i));
+  const duplicateProduct = (i) =>
+    setProducts((ps) => {
+      const copy = {
+        ...ps[i],
+        _key: newDraftKey(),
+        materials: ps[i].materials.map((m) => ({ ...m })),
+      };
+      return [...ps.slice(0, i + 1), copy, ...ps.slice(i + 1)];
+    });
 
   const byId = useMemo(() => {
     const m = {};
@@ -98,7 +115,9 @@ export default function NewOrder({ onCreated }) {
             title={`Product ${i + 1}`}
             value={p}
             catalog={materials}
+            presets={presets}
             onChange={(next) => setProduct(i, next)}
+            onDuplicate={() => duplicateProduct(i)}
             onRemove={products.length > 1 ? () => removeProduct(i) : null}
           />
         ))}

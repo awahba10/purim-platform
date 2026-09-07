@@ -2,22 +2,31 @@
 
 A simple web app for managing holiday tray orders for a community giveaway.
 
-Five tabs down the left side:
+Six tabs down the left side:
 
 | Tab | What it does |
 | --- | --- |
-| **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product has its own name, delivery address, notes, gift message, and materials (searchable, with a quantity each). Cost is auto-suggested from the materials but can be overridden; price is separate. A running summary shows every product and the order's total cost and total charge. A ticket number is assigned on submit. |
-| **All Orders** | Spreadsheet-style list, one row per order. Sort any column, search by customer / phone / contact / ticket. Click a row for full detail including every product in the order. Order-level **Payment status** (Not Paid / Paid) and **Progress status** (Not Made / Made / Delivered), changed with one click. Order and its products are editable. |
+| **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product has its own name, delivery address, notes, gift message, and materials (tap-to-add chips, with a quantity each). Cost is auto-suggested from the materials but can be overridden; price is separate. Optionally start a product from a **premade preset** to fill everything in, or **Duplicate** a product entry. A running summary shows every product and the order's total cost and total charge. A ticket number is assigned on submit. |
+| **All Orders** | Spreadsheet-style list, one row per order. Sort any column, search by customer / phone / contact / ticket. Click a row for full detail including every product. **Payment status** (Not Paid / Paid) is manual. **Progress status** has four values — None Made / Some Made / All Made / Delivered — calculated automatically from the Made/Not-made state of the order's products, and overridable per order (with an **Auto** button to revert). |
 | **Materials** | List of supplies with a stock count and a per-unit **cost**. Add a custom material; edit any row. |
-| **Products** | Every product from every order — one row each, tagged with its ticket number, showing its materials, cost, and price. Editable in place; edits are the same record the order shows. |
+| **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — holds no stock and is not part of order or inventory logic. |
+| **Products** | Every product from every order — one row each, tagged with its ticket number, showing its materials, cost, price, and a **Made / Not made** toggle. Editable in place; edits are the same record the order shows. |
 | **Financials** | Auto-updating dashboard: total orders, total products sold, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
 
 ### Inventory logic
 
-Products are created inside an order (there is no premade catalog). When an order is
-created, every material used by every product in it has its stock reduced by the
-quantity used. Editing a product's materials moves stock back and forth to match,
-and deleting a product or a whole order returns its materials to stock.
+Products are created inside an order (the Premade Products tab is only a template
+and never touches stock). When an order is created, every material used by every
+product in it has its stock reduced by the quantity used. Editing a product's
+materials moves stock back and forth to match, and deleting a product or a whole
+order returns its materials to stock.
+
+### Order progress
+
+Each product has a Made / Not-made flag. An order's progress is derived from its
+products: **None Made** (zero made), **Some Made** (a mix), **All Made** (all made).
+Setting any value manually — including **Delivered** — freezes it as an override;
+the **Auto** button clears the override so it follows the products again.
 
 ## Tech
 
