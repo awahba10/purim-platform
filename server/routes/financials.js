@@ -1,11 +1,17 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 
-// All financial figures are derived live from orders. Nothing is stored here.
+// Everything is derived live. One order can hold many products, so revenue and
+// profit are summed across every product, split by its order's payment status.
 router.get('/', async (req, res, next) => {
   try {
+    const { rows: orderCount } = await pool.query(
+      'SELECT COUNT(*)::int AS n FROM orders'
+    );
     const { rows } = await pool.query(
-      'SELECT price, cost, payment_status FROM orders'
+      `SELECT o.payment_status, p.price, p.cost
+         FROM products p
+         JOIN orders o ON o.id = p.order_id`
     );
 
     let paidRevenue = 0;
@@ -26,7 +32,8 @@ router.get('/', async (req, res, next) => {
     }
 
     res.json({
-      totalOrders: rows.length,
+      totalOrders: orderCount[0].n,
+      totalProductsSold: rows.length,
       revenue: {
         paid: paidRevenue,
         notPaid: notPaidRevenue,

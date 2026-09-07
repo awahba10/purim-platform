@@ -1,107 +1,100 @@
 const router = require('express').Router();
 const { pool } = require('../db');
+const {
+  toProduct,
+  cleanMaterials,
+  withMaterials,
+  restoreProductMaterials,
+} = require('../lib/products');
 
-const toProduct = (p, materials = []) => ({
-  ...p,
-  quantity: Number(p.quantity),
-  cost: Number(p.cost),
-  price: Number(p.price),
-  profit: Number(p.price) - Number(p.cost),
-  materials,
-});
+const SELECT_PRODUCT = `
+  SELECT p.*, o.ticket_number, o.customer_name, o.payment_status
+    FROM products p
+    JOIN orders o ON o.id = p.order_id
+`;
 
-// List products, each with its linked materials.
+// LIST every product across all orders (one row per product).
 router.get('/', async (req, res, next) => {
   try {
-    const { rows: products } = await pool.query('SELECT * FROM products ORDER BY name');
-    const { rows: links } = await pool.query(
-      `SELECT pm.product_id, pm.material_id, pm.quantity_used, m.name AS material_name
-         FROM product_materials pm
-         JOIN materials m ON m.id = pm.material_id
-       ORDER BY m.name`
+    const { rows } = await pool.query(
+      `${SELECT_PRODUCT} ORDER BY o.created_at DESC, p.id`
     );
-    const byProduct = {};
-    for (const l of links) {
-      (byProduct[l.product_id] = byProduct[l.product_id] || []).push({
-        material_id: l.material_id,
-        material_name: l.material_name,
-        quantity_used: Number(l.quantity_used),
-      });
-    }
-    res.json(products.map((p) => toProduct(p, byProduct[p.id] || [])));
+    const withMats = await withMaterials(pool, rows);
+    res.json(withMats.map(toProduct));
   } catch (err) {
     next(err);
   }
 });
 
-async function replaceLinks(client, productId, materials) {
-  await client.query('DELETE FROM product_materials WHERE product_id = $1', [productId]);
-  for (const m of materials || []) {
-    if (!m || !m.material_id) continue;
-    await client.query(
-      `INSERT INTO product_materials (product_id, material_id, quantity_used)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (product_id, material_id) DO UPDATE SET quantity_used = EXCLUDED.quantity_used`,
-      [productId, m.material_id, Math.max(1, Number(m.quantity_used) || 1)]
-    );
-  }
-}
-
-// Create a product with linked materials.
-router.post('/', async (req, res, next) => {
-  const { name, quantity, cost, price, materials } = req.body;
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Product name is required' });
-  }
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query(
-      'INSERT INTO products (name, quantity, cost, price) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name.trim(), Number(quantity) || 0, Number(cost) || 0, Number(price) || 0]
-    );
-    await replaceLinks(client, rows[0].id, materials);
-    await client.query('COMMIT');
-    res.status(201).json(toProduct(rows[0]));
-  } catch (err) {
-    await client.query('ROLLBACK');
-    next(err);
-  } finally {
-    client.release();
-  }
-});
-
-// Edit a product. If "materials" is provided, it replaces the full link list.
+// EDIT a product — this is the same underlying record the order shows.
 router.patch('/:id', async (req, res, next) => {
-  const { name, quantity, cost, price, materials } = req.body;
+  const f = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query(
-      `UPDATE products
-         SET name = COALESCE($1, name),
-             quantity = COALESCE($2, quantity),
-             cost = COALESCE($3, cost),
-             price = COALESCE($4, price)
-       WHERE id = $5
-       RETURNING *`,
-      [
-        name !== undefined ? String(name).trim() : null,
-        quantity !== undefined ? Number(quantity) : null,
-        cost !== undefined ? Number(cost) : null,
-        price !== undefined ? Number(price) : null,
-        req.params.id,
-      ]
+    const { rows: cur } = await client.query(
+      'SELECT * FROM products WHERE id = $1 FOR UPDATE',
+      [req.params.id]
     );
-    if (!rows.length) {
+    if (!cur.length) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Product not found' });
     }
-    if (Array.isArray(materials)) {
-      await replaceLinks(client, rows[0].id, materials);
+
+    const sets = [];
+    const vals = [];
+    let i = 1;
+    const put = (col, val) => {
+      sets.push(`${col} = $${i++}`);
+      vals.push(val);
+    };
+    if (f.name !== undefined && String(f.name).trim()) {
+      put('name', String(f.name).trim());
     }
+    if (f.address !== undefined) put('address', String(f.address).trim() || null);
+    if (f.notes !== undefined) put('notes', String(f.notes).trim() || null);
+    if (f.gift_message !== undefined) {
+      put('gift_message', String(f.gift_message).trim() || null);
+    }
+    if (f.cost !== undefined && f.cost !== '' && f.cost !== null) {
+      put('cost', Number(f.cost) || 0);
+    }
+    if (f.price !== undefined && f.price !== '' && f.price !== null) {
+      put('price', Number(f.price) || 0);
+    }
+    if (sets.length) {
+      vals.push(req.params.id);
+      await client.query(
+        `UPDATE products SET ${sets.join(', ')} WHERE id = $${i}`,
+        vals
+      );
+    }
+
+    if (Array.isArray(f.materials)) {
+      await restoreProductMaterials(client, req.params.id);
+      await client.query('DELETE FROM product_materials WHERE product_id = $1', [
+        req.params.id,
+      ]);
+      for (const m of cleanMaterials(f.materials)) {
+        await client.query(
+          `INSERT INTO product_materials (product_id, material_id, quantity_used)
+           VALUES ($1, $2, $3)`,
+          [req.params.id, m.material_id, m.quantity_used]
+        );
+        await client.query(
+          'UPDATE materials SET quantity = quantity - $1 WHERE id = $2',
+          [m.quantity_used, m.material_id]
+        );
+      }
+    }
+
     await client.query('COMMIT');
-    res.json(toProduct(rows[0]));
+
+    const { rows: fresh } = await pool.query(`${SELECT_PRODUCT} WHERE p.id = $1`, [
+      req.params.id,
+    ]);
+    const withMats = await withMaterials(pool, fresh);
+    res.json(toProduct(withMats[0]));
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
@@ -110,13 +103,20 @@ router.patch('/:id', async (req, res, next) => {
   }
 });
 
-// Delete a product.
+// DELETE a product and restore its materials' stock.
 router.delete('/:id', async (req, res, next) => {
+  const client = await pool.connect();
   try {
-    await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
+    await client.query('BEGIN');
+    await restoreProductMaterials(client, req.params.id);
+    await client.query('DELETE FROM products WHERE id = $1', [req.params.id]);
+    await client.query('COMMIT');
     res.status(204).end();
   } catch (err) {
+    await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
   }
 });
 

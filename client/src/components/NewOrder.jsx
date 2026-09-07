@@ -1,42 +1,55 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money } from '../util';
-
-const EMPTY = {
-  name: '',
-  address: '',
-  phone: '',
-  instagram: '',
-  product_id: '',
-  notes: '',
-  gift_message: '',
-};
+import { money, newProductDraft, draftToPayload, suggestedCostOf } from '../util';
+import ProductFields from './ProductFields';
 
 export default function NewOrder({ onCreated }) {
-  const [products, setProducts] = useState([]);
-  const [form, setForm] = useState(EMPTY);
+  const [materials, setMaterials] = useState([]);
+  const [customer, setCustomer] = useState({
+    customer_name: '',
+    phone: '',
+    contact_method: '',
+  });
+  const [products, setProducts] = useState([newProductDraft()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState('');
 
   useEffect(() => {
-    api.get('/products').then(setProducts).catch((e) => setError(e.message));
+    api.get('/materials').then(setMaterials).catch((e) => setError(e.message));
   }, []);
 
-  const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const setC = (k, v) => setCustomer((c) => ({ ...c, [k]: v }));
+  const setProduct = (i, next) =>
+    setProducts((ps) => ps.map((p, idx) => (idx === i ? next : p)));
+  const addProduct = () => setProducts((ps) => [...ps, newProductDraft()]);
+  const removeProduct = (i) => setProducts((ps) => ps.filter((_, idx) => idx !== i));
+
+  const byId = useMemo(() => {
+    const m = {};
+    for (const x of materials) m[x.id] = x;
+    return m;
+  }, [materials]);
+
+  const named = products.filter((p) => p.name.trim());
+  const costOf = (p) =>
+    p.cost === '' ? suggestedCostOf(p.materials, materials) : Number(p.cost) || 0;
+  const totalCost = named.reduce((s, p) => s + costOf(p), 0);
+  const totalCharge = named.reduce((s, p) => s + (Number(p.price) || 0), 0);
 
   const submit = async (e) => {
     e.preventDefault();
     setError('');
-    setDone('');
-    if (!form.name.trim()) return setError('Please enter the customer name.');
-    if (!form.product_id) return setError('Please choose a product.');
+    if (!customer.customer_name.trim()) return setError('Enter the customer name.');
+    if (!named.length) return setError('Add at least one product with a name.');
     setSaving(true);
     try {
-      await api.post('/orders', { ...form, product_id: Number(form.product_id) });
-      setForm(EMPTY);
-      setDone('Order saved.');
-      if (onCreated) onCreated();
+      const order = await api.post('/orders', {
+        ...customer,
+        products: named.map((p) => draftToPayload(p, materials)),
+      });
+      setCustomer({ customer_name: '', phone: '', contact_method: '' });
+      setProducts([newProductDraft()]);
+      if (onCreated) onCreated(order);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -47,91 +60,90 @@ export default function NewOrder({ onCreated }) {
   return (
     <div className="panel">
       <h1>New Order</h1>
-      <p className="subtle">Fill out the details below to add a tray order.</p>
+      <p className="subtle">A ticket number is assigned automatically when you submit.</p>
 
-      <form onSubmit={submit} className="form">
+      <form onSubmit={submit} className="form form-wide">
+        <div className="section-label">Customer</div>
         <label>
           Customer name *
           <input
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
+            value={customer.customer_name}
+            onChange={(e) => setC('customer_name', e.target.value)}
             placeholder="Jane Cohen"
           />
         </label>
-
-        <label>
-          Address
-          <textarea
-            rows={2}
-            value={form.address}
-            onChange={(e) => set('address', e.target.value)}
-            placeholder="123 Main St, Apt 4"
-          />
-        </label>
-
         <div className="row">
           <label>
             Phone number
             <input
-              value={form.phone}
-              onChange={(e) => set('phone', e.target.value)}
+              value={customer.phone}
+              onChange={(e) => setC('phone', e.target.value)}
               placeholder="(555) 123-4567"
             />
           </label>
           <label>
-            Instagram handle
+            Way of contact
             <input
-              value={form.instagram}
-              onChange={(e) => set('instagram', e.target.value)}
-              placeholder="@janecohen"
+              value={customer.contact_method}
+              onChange={(e) => setC('contact_method', e.target.value)}
+              placeholder="Text, WhatsApp, @handle, email…"
             />
           </label>
         </div>
 
-        <label>
-          Product *
-          <select
-            value={form.product_id}
-            onChange={(e) => set('product_id', e.target.value)}
-          >
-            <option value="">— Select a product —</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({money(p.price)})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Notes
-          <textarea
-            rows={2}
-            value={form.notes}
-            onChange={(e) => set('notes', e.target.value)}
-            placeholder="Leave at front door, allergic to nuts, etc."
+        <div className="section-label">Products in this order</div>
+        {products.map((p, i) => (
+          <ProductFields
+            key={p._key}
+            title={`Product ${i + 1}`}
+            value={p}
+            catalog={materials}
+            onChange={(next) => setProduct(i, next)}
+            onRemove={products.length > 1 ? () => removeProduct(i) : null}
           />
-        </label>
+        ))}
+        <button type="button" className="add-product" onClick={addProduct}>
+          + Add another product
+        </button>
 
-        <label>
-          Message to include in the gift
-          <textarea
-            rows={3}
-            value={form.gift_message}
-            onChange={(e) => set('gift_message', e.target.value)}
-            placeholder="Chag Purim Sameach! With love, the Levy family"
-          />
-        </label>
+        <div className="summary-box">
+          <div className="section-label">Order summary</div>
+          {named.length === 0 && <p className="subtle">No products added yet.</p>}
+          {named.map((p, i) => (
+            <div className="summary-product" key={i}>
+              <div className="sp-top">
+                <strong>{p.name.trim()}</strong>
+                <span>{money(Number(p.price) || 0)}</span>
+              </div>
+              <div className="subtle">
+                {p.materials.length
+                  ? p.materials
+                      .map((m) => `${byId[m.material_id]?.name || '?'} ×${m.quantity_used}`)
+                      .join(', ')
+                  : 'No materials'}
+                {'  ·  cost '}
+                {money(costOf(p))}
+              </div>
+            </div>
+          ))}
+          <div className="summary-totals">
+            <div>
+              <span className="subtle">Total cost</span>
+              <strong>{money(totalCost)}</strong>
+            </div>
+            <div>
+              <span className="subtle">Total charge</span>
+              <strong>{money(totalCharge)}</strong>
+            </div>
+          </div>
+        </div>
 
         {error && <div className="error">{error}</div>}
-        {done && <div className="notice">{done}</div>}
-
         <button className="primary" disabled={saving}>
           {saving ? 'Saving…' : 'Create order'}
         </button>
-
-        {products.length === 0 && (
-          <p className="subtle">Tip: add products in the Products tab first.</p>
+        {materials.length === 0 && (
+          <p className="subtle">Tip: add your materials in the Materials tab first.</p>
         )}
       </form>
     </div>

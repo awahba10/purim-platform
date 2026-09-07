@@ -47,12 +47,13 @@ export default function Financials() {
         <button onClick={load}>Refresh</button>
       </div>
       <p className="subtle">
-        Live totals based on every order and its product price. Nothing to enter
-        here.
+        Live totals. One order can hold several products; revenue and profit are
+        summed across every product.
       </p>
 
       <div className="cards">
-        <Card label="Total orders made" value={data.totalOrders} />
+        <Card label="Total orders" value={data.totalOrders} />
+        <Card label="Total products sold" value={data.totalProductsSold} />
       </div>
 
       <h3>Revenue</h3>

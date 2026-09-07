@@ -445,7 +445,254 @@ td.right button {
   .detail-grid {
     grid-template-columns: 1fr;
   }
-  .form .row {
+  .form .row,
+  .product-fields .row {
     flex-direction: column;
   }
+  .summary-totals {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mp-row {
+    flex-wrap: wrap;
+  }
+  .mp-name {
+    flex-basis: 100%;
+  }
+}
+
+/* --- New Order / product builder --- */
+.form-wide {
+  max-width: 720px;
+}
+
+.section-label {
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.product-fields {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fcfcfd;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pf-head strong {
+  font-size: 14px;
+}
+
+/* ProductFields is used both inside .form and bare inside modals, so it
+   restates the label layout instead of relying on a .form ancestor. */
+.product-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.product-fields label input,
+.product-fields label select,
+.product-fields label textarea {
+  font-weight: 400;
+  color: var(--ink);
+}
+.product-fields .row {
+  display: flex;
+  gap: 12px;
+}
+.product-fields .row label {
+  flex: 1;
+}
+
+.link-danger {
+  border: none;
+  background: none;
+  color: var(--danger);
+  padding: 0;
+  font-size: 13px;
+}
+.link-danger:hover {
+  background: none;
+  text-decoration: underline;
+}
+.linkbtn {
+  border: none;
+  background: none;
+  color: var(--brand);
+  padding: 0 0 0 6px;
+  font-size: 12px;
+  text-decoration: underline;
+}
+.linkbtn:hover {
+  background: none;
+}
+.hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.add-product {
+  align-self: flex-start;
+  border: 1px dashed var(--brand);
+  color: var(--brand);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+.add-product:hover {
+  background: var(--brand-soft);
+}
+
+/* Material picker */
+.mp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mp-results {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.mp-result {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 0;
+}
+.mp-result:last-child {
+  border-bottom: none;
+}
+.mp-result:hover {
+  background: var(--brand-soft);
+}
+.mp-empty {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.mp-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.mp-name {
+  flex: 1;
+  font-size: 14px;
+}
+.mp-qty {
+  width: 64px;
+}
+.mp-unit {
+  font-size: 12px;
+}
+.mp-line {
+  width: 72px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mp-x {
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 2px 6px;
+}
+.mp-x:hover {
+  color: var(--danger);
+  background: none;
+}
+
+/* Running summary */
+.summary-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary-product {
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 6px;
+}
+.summary-product:last-of-type {
+  border-bottom: none;
+}
+.sp-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.summary-totals {
+  display: flex;
+  gap: 28px;
+  margin-top: 4px;
+}
+.summary-totals > div {
+  display: flex;
+  flex-direction: column;
+}
+.summary-totals strong {
+  font-size: 18px;
+}
+
+/* Product cards in the order detail view */
+.product-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 8px 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pc-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+}
+.pc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.modal.wide {
+  max-width: 680px;
+}
+.modal-backdrop.layer2 {
+  z-index: 60;
+  background: rgba(15, 18, 25, 0.55);
 }

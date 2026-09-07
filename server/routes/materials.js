@@ -1,7 +1,11 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 
-const toMaterial = (m) => ({ ...m, quantity: Number(m.quantity) });
+const toMaterial = (m) => ({
+  ...m,
+  quantity: Number(m.quantity),
+  cost: Number(m.cost),
+});
 
 // List all materials.
 router.get('/', async (req, res, next) => {
@@ -16,13 +20,13 @@ router.get('/', async (req, res, next) => {
 // Add a custom material.
 router.post('/', async (req, res, next) => {
   try {
-    const { name, quantity } = req.body;
+    const { name, quantity, cost } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Material name is required' });
     }
     const { rows } = await pool.query(
-      'INSERT INTO materials (name, quantity) VALUES ($1, $2) RETURNING *',
-      [name.trim(), Number(quantity) || 0]
+      'INSERT INTO materials (name, quantity, cost) VALUES ($1, $2, $3) RETURNING *',
+      [name.trim(), Number(quantity) || 0, Number(cost) || 0]
     );
     res.status(201).json(toMaterial(rows[0]));
   } catch (err) {
@@ -30,19 +34,21 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// Edit a material (name and/or quantity).
+// Edit a material (name, quantity, and/or cost).
 router.patch('/:id', async (req, res, next) => {
   try {
-    const { name, quantity } = req.body;
+    const { name, quantity, cost } = req.body;
     const { rows } = await pool.query(
       `UPDATE materials
          SET name = COALESCE($1, name),
-             quantity = COALESCE($2, quantity)
-       WHERE id = $3
+             quantity = COALESCE($2, quantity),
+             cost = COALESCE($3, cost)
+       WHERE id = $4
        RETURNING *`,
       [
         name !== undefined ? String(name).trim() : null,
         quantity !== undefined ? Number(quantity) : null,
+        cost !== undefined ? Number(cost) : null,
         req.params.id,
       ]
     );

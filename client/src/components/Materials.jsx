@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { money } from '../util';
 
 function MaterialRow({ item, onChanged, onError }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
   const [qty, setQty] = useState(item.quantity);
+  const [cost, setCost] = useState(item.cost);
   const [busy, setBusy] = useState(false);
+
+  const reset = () => {
+    setName(item.name);
+    setQty(item.quantity);
+    setCost(item.cost);
+    setEditing(false);
+  };
 
   const save = async () => {
     setBusy(true);
@@ -13,6 +22,7 @@ function MaterialRow({ item, onChanged, onError }) {
       await api.patch(`/materials/${item.id}`, {
         name,
         quantity: Number(qty) || 0,
+        cost: Number(cost) || 0,
       });
       setEditing(false);
       onChanged();
@@ -38,6 +48,7 @@ function MaterialRow({ item, onChanged, onError }) {
       <tr>
         <td>{item.name}</td>
         <td className={item.quantity < 0 ? 'neg' : ''}>{item.quantity}</td>
+        <td>{money(item.cost)}</td>
         <td className="right">
           <button onClick={() => setEditing(true)}>Edit</button>
           <button className="danger" onClick={remove}>
@@ -61,19 +72,20 @@ function MaterialRow({ item, onChanged, onError }) {
           style={{ width: '90px' }}
         />
       </td>
+      <td>
+        <input
+          type="number"
+          step="0.01"
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
+          style={{ width: '90px' }}
+        />
+      </td>
       <td className="right">
         <button className="primary" onClick={save} disabled={busy}>
           Save
         </button>
-        <button
-          onClick={() => {
-            setEditing(false);
-            setName(item.name);
-            setQty(item.quantity);
-          }}
-        >
-          Cancel
-        </button>
+        <button onClick={reset}>Cancel</button>
       </td>
     </tr>
   );
@@ -82,7 +94,7 @@ function MaterialRow({ item, onChanged, onError }) {
 export default function Materials() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState({ name: '', quantity: '' });
+  const [draft, setDraft] = useState({ name: '', quantity: '', cost: '' });
 
   const load = () =>
     api.get('/materials').then(setItems).catch((e) => setError(e.message));
@@ -99,8 +111,9 @@ export default function Materials() {
       await api.post('/materials', {
         name: draft.name.trim(),
         quantity: Number(draft.quantity) || 0,
+        cost: Number(draft.cost) || 0,
       });
-      setDraft({ name: '', quantity: '' });
+      setDraft({ name: '', quantity: '', cost: '' });
       load();
     } catch (err) {
       setError(err.message);
@@ -111,8 +124,8 @@ export default function Materials() {
     <div className="panel">
       <h1>Materials</h1>
       <p className="subtle">
-        Supplies you have on hand. Quantities drop automatically when an order is
-        created.
+        Supplies on hand. "Cost" is the price per unit — it feeds each product's
+        suggested cost. Stock drops automatically when a product uses a material.
       </p>
 
       <form className="add-bar" onSubmit={add}>
@@ -127,6 +140,13 @@ export default function Materials() {
           value={draft.quantity}
           onChange={(e) => setDraft((d) => ({ ...d, quantity: e.target.value }))}
         />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Cost each"
+          value={draft.cost}
+          onChange={(e) => setDraft((d) => ({ ...d, cost: e.target.value }))}
+        />
         <button className="primary">+ Add material</button>
       </form>
 
@@ -138,6 +158,7 @@ export default function Materials() {
             <tr>
               <th>Name</th>
               <th>In stock</th>
+              <th>Cost each</th>
               <th className="right">Actions</th>
             </tr>
           </thead>
@@ -152,7 +173,7 @@ export default function Materials() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={3} className="subtle">
+                <td colSpan={4} className="subtle">
                   No materials yet.
                 </td>
               </tr>

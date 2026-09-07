@@ -6,18 +6,18 @@ Five tabs down the left side:
 
 | Tab | What it does |
 | --- | --- |
-| **New Order** | Form to add a tray order (name, address, phone, Instagram, product, notes, gift message). |
-| **All Orders** | Spreadsheet-style list. Sort any column, search by name / phone / Instagram, click a row for full detail. Each order has a **Payment status** (Not Paid / Paid) and a **Progress status** (Not Made / Made / Delivered), both changed with one click. The whole order is editable. |
-| **Materials** | List of supplies with a stock count. Add a custom material; edit any row. |
-| **Products** | List of trays with stock, cost to make, sell price, and the materials each one uses. Add / edit products and tick the materials they consume. |
-| **Financials** | Auto-updating dashboard: total orders, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
+| **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product has its own name, delivery address, notes, gift message, and materials (searchable, with a quantity each). Cost is auto-suggested from the materials but can be overridden; price is separate. A running summary shows every product and the order's total cost and total charge. A ticket number is assigned on submit. |
+| **All Orders** | Spreadsheet-style list, one row per order. Sort any column, search by customer / phone / contact / ticket. Click a row for full detail including every product in the order. Order-level **Payment status** (Not Paid / Paid) and **Progress status** (Not Made / Made / Delivered), changed with one click. Order and its products are editable. |
+| **Materials** | List of supplies with a stock count and a per-unit **cost**. Add a custom material; edit any row. |
+| **Products** | Every product from every order — one row each, tagged with its ticket number, showing its materials, cost, and price. Editable in place; edits are the same record the order shows. |
+| **Financials** | Auto-updating dashboard: total orders, total products sold, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
 
 ### Inventory logic
 
-When an order is created, the app decreases that product's stock by 1 and decreases
-every linked material by the amount that product uses. Editing an order to a
-different product moves the stock back and forth accordingly, and deleting an order
-returns its stock.
+Products are created inside an order (there is no premade catalog). When an order is
+created, every material used by every product in it has its stock reduced by the
+quantity used. Editing a product's materials moves stock back and forth to match,
+and deleting a product or a whole order returns its materials to stock.
 
 ## Tech
 
@@ -26,8 +26,7 @@ returns its stock.
 - **Database:** PostgreSQL
 
 The database schema is created automatically on server start (`server/schema.sql`),
-and a few sample materials/products are seeded the first time the `materials` table
-is empty.
+and a few sample materials are seeded the first time the `materials` table is empty.
 
 ## Run it locally
 

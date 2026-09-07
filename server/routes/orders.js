@@ -1,104 +1,79 @@
 const router = require('express').Router();
 const { pool } = require('../db');
+const {
+  toOrder,
+  insertProduct,
+  restoreProductMaterials,
+  fetchOrderFull,
+} = require('../lib/products');
 
-const toOrder = (o) => ({
-  ...o,
-  price: Number(o.price),
-  cost: Number(o.cost),
-  profit: Number(o.price) - Number(o.cost),
-});
+const ticketFor = (id) => 'T-' + String(id).padStart(4, '0');
 
-const SELECT_WITH_PRODUCT = `
-  SELECT o.*, p.name AS product_name
-    FROM orders o
-    LEFT JOIN products p ON p.id = o.product_id
-`;
-
-// sign = -1 consumes stock, +1 restores it.
-async function applyInventory(client, productId, sign) {
-  await client.query('UPDATE products SET quantity = quantity + $1 WHERE id = $2', [
-    sign,
-    productId,
-  ]);
-  const { rows } = await client.query(
-    'SELECT material_id, quantity_used FROM product_materials WHERE product_id = $1',
-    [productId]
-  );
-  for (const l of rows) {
-    await client.query('UPDATE materials SET quantity = quantity + $1 WHERE id = $2', [
-      sign * Number(l.quantity_used),
-      l.material_id,
-    ]);
-  }
-}
-
-async function fetchOrder(id) {
-  const { rows } = await pool.query(`${SELECT_WITH_PRODUCT} WHERE o.id = $1`, [id]);
-  return rows[0];
-}
-
-// List all orders (newest first).
+// LIST — one row per order, with product count and totals.
 router.get('/', async (req, res, next) => {
   try {
-    const { rows } = await pool.query(`${SELECT_WITH_PRODUCT} ORDER BY o.created_at DESC`);
-    res.json(rows.map(toOrder));
+    const { rows } = await pool.query(
+      `SELECT o.*,
+              COUNT(p.id) AS product_count,
+              COALESCE(SUM(p.price), 0) AS total_price,
+              COALESCE(SUM(p.cost), 0) AS total_cost
+         FROM orders o
+         LEFT JOIN products p ON p.order_id = o.id
+        GROUP BY o.id
+        ORDER BY o.created_at DESC`
+    );
+    res.json(rows.map((o) => toOrder({ ...o, products: [] })));
   } catch (err) {
     next(err);
   }
 });
 
-// Single order detail.
+// DETAIL — order plus all its products (each with materials).
 router.get('/:id', async (req, res, next) => {
   try {
-    const order = await fetchOrder(req.params.id);
+    const order = await fetchOrderFull(pool, req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    res.json(toOrder(order));
+    res.json(order);
   } catch (err) {
     next(err);
   }
 });
 
-// Create an order. Decrements the product by 1 and each linked material by its
-// per-product quantity. Price and cost are snapshotted from the product.
+// CREATE — order-level info + one or more products created on the spot.
 router.post('/', async (req, res, next) => {
-  const { name, address, phone, instagram, product_id, notes, gift_message } = req.body;
-  if (!name || !name.trim()) {
+  const { customer_name, phone, contact_method, products } = req.body;
+  if (!customer_name || !customer_name.trim()) {
     return res.status(400).json({ error: 'Customer name is required' });
   }
-  if (!product_id) {
-    return res.status(400).json({ error: 'Please choose a product' });
+  const list = Array.isArray(products)
+    ? products.filter((p) => p && (p.name || '').trim())
+    : [];
+  if (!list.length) {
+    return res.status(400).json({ error: 'Add at least one product with a name' });
   }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows: prod } = await client.query(
-      'SELECT * FROM products WHERE id = $1 FOR UPDATE',
-      [product_id]
-    );
-    if (!prod.length) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Selected product no longer exists' });
-    }
-    await applyInventory(client, product_id, -1);
     const { rows } = await client.query(
-      `INSERT INTO orders
-         (name, address, phone, instagram, product_id, notes, gift_message, price, cost)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id`,
+      `INSERT INTO orders (customer_name, phone, contact_method)
+       VALUES ($1, $2, $3) RETURNING id`,
       [
-        name.trim(),
-        address || null,
-        phone || null,
-        instagram || null,
-        product_id,
-        notes || null,
-        gift_message || null,
-        prod[0].price,
-        prod[0].cost,
+        customer_name.trim(),
+        (phone || '').trim() || null,
+        (contact_method || '').trim() || null,
       ]
     );
+    const orderId = rows[0].id;
+    await client.query('UPDATE orders SET ticket_number = $1 WHERE id = $2', [
+      ticketFor(orderId),
+      orderId,
+    ]);
+    for (const p of list) {
+      await insertProduct(client, orderId, p);
+    }
     await client.query('COMMIT');
-    res.status(201).json(toOrder(await fetchOrder(rows[0].id)));
+    res.status(201).json(await fetchOrderFull(pool, orderId));
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
@@ -107,76 +82,56 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// Edit an order. Any field can change. Switching the product restores the old
-// product's stock and consumes the new one's, and re-snapshots price/cost.
+// UPDATE order-level fields (customer, phone, contact, statuses).
 router.patch('/:id', async (req, res, next) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const { rows: cur } = await client.query(
-      'SELECT * FROM orders WHERE id = $1 FOR UPDATE',
-      [req.params.id]
-    );
-    if (!cur.length) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Order not found' });
-    }
-    const order = cur[0];
-
+    const f = req.body;
     const sets = [];
     const vals = [];
     let i = 1;
-
-    const simpleFields = [
-      'name',
-      'address',
-      'phone',
-      'instagram',
-      'notes',
-      'gift_message',
-      'payment_status',
-      'progress_status',
-    ];
-    for (const f of simpleFields) {
-      if (req.body[f] !== undefined) {
-        sets.push(`${f} = $${i++}`);
-        vals.push(req.body[f]);
-      }
+    const put = (col, val) => {
+      sets.push(`${col} = $${i++}`);
+      vals.push(val);
+    };
+    if (f.customer_name !== undefined && String(f.customer_name).trim()) {
+      put('customer_name', String(f.customer_name).trim());
     }
-
-    if (
-      req.body.product_id !== undefined &&
-      Number(req.body.product_id) !== order.product_id
-    ) {
-      const { rows: prod } = await client.query('SELECT * FROM products WHERE id = $1', [
-        req.body.product_id,
-      ]);
-      if (!prod.length) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Selected product does not exist' });
-      }
-      if (order.product_id) await applyInventory(client, order.product_id, +1);
-      await applyInventory(client, req.body.product_id, -1);
-      sets.push(`product_id = $${i++}`);
-      vals.push(req.body.product_id);
-      sets.push(`price = $${i++}`);
-      vals.push(prod[0].price);
-      sets.push(`cost = $${i++}`);
-      vals.push(prod[0].cost);
+    if (f.phone !== undefined) put('phone', String(f.phone).trim() || null);
+    if (f.contact_method !== undefined) {
+      put('contact_method', String(f.contact_method).trim() || null);
     }
+    if (f.payment_status !== undefined) put('payment_status', f.payment_status);
+    if (f.progress_status !== undefined) put('progress_status', f.progress_status);
 
-    if (!sets.length) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Nothing to update' });
-    }
-
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
     vals.push(req.params.id);
-    await client.query(
+    const { rowCount } = await pool.query(
       `UPDATE orders SET ${sets.join(', ')} WHERE id = $${i}`,
       vals
     );
+    if (!rowCount) return res.status(404).json({ error: 'Order not found' });
+    res.json(await fetchOrderFull(pool, req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ADD a product to an existing order.
+router.post('/:id/products', async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'SELECT id FROM orders WHERE id = $1 FOR UPDATE',
+      [req.params.id]
+    );
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    await insertProduct(client, rows[0].id, req.body);
     await client.query('COMMIT');
-    res.json(toOrder(await fetchOrder(req.params.id)));
+    res.status(201).json(await fetchOrderFull(pool, req.params.id));
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
@@ -185,17 +140,17 @@ router.patch('/:id', async (req, res, next) => {
   }
 });
 
-// Delete an order and restore its product's stock.
+// DELETE an order and restore stock for every product in it.
 router.delete('/:id', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'SELECT * FROM orders WHERE id = $1 FOR UPDATE',
+      'SELECT id FROM products WHERE order_id = $1',
       [req.params.id]
     );
-    if (rows.length && rows[0].product_id) {
-      await applyInventory(client, rows[0].product_id, +1);
+    for (const p of rows) {
+      await restoreProductMaterials(client, p.id);
     }
     await client.query('DELETE FROM orders WHERE id = $1', [req.params.id]);
     await client.query('COMMIT');

@@ -4,15 +4,18 @@ import { money } from '../util';
 import OrderDetail from './OrderDetail';
 
 const COLUMNS = [
-  { key: 'name', label: 'Name' },
+  { key: 'ticket_number', label: 'Ticket' },
+  { key: 'customer_name', label: 'Customer' },
   { key: 'phone', label: 'Phone' },
-  { key: 'instagram', label: 'Instagram' },
-  { key: 'product_name', label: 'Product' },
-  { key: 'price', label: 'Price' },
+  { key: 'contact_method', label: 'Contact' },
+  { key: 'product_count', label: 'Products' },
+  { key: 'total_price', label: 'Charge' },
   { key: 'payment_status', label: 'Payment' },
   { key: 'progress_status', label: 'Progress' },
   { key: 'created_at', label: 'Created' },
 ];
+
+const NUMERIC = new Set(['product_count', 'total_price']);
 
 function progressClass(status) {
   if (status === 'Delivered') return 'ok';
@@ -39,7 +42,7 @@ export default function AllOrders() {
     let list = orders;
     if (needle) {
       list = list.filter((o) =>
-        [o.name, o.phone, o.instagram].some((v) =>
+        [o.customer_name, o.phone, o.contact_method, o.ticket_number].some((v) =>
           (v || '').toLowerCase().includes(needle)
         )
       );
@@ -48,7 +51,7 @@ export default function AllOrders() {
     return [...list].sort((a, b) => {
       let av = a[key];
       let bv = b[key];
-      if (key === 'price') {
+      if (NUMERIC.has(key)) {
         av = Number(av);
         bv = Number(bv);
       } else if (key === 'created_at') {
@@ -76,7 +79,7 @@ export default function AllOrders() {
       <h1>All Orders</h1>
       <input
         className="search"
-        placeholder="Search by name, phone, or Instagram…"
+        placeholder="Search by customer, phone, contact, or ticket…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -97,11 +100,12 @@ export default function AllOrders() {
           <tbody>
             {rows.map((o) => (
               <tr key={o.id} onClick={() => setSelectedId(o.id)}>
-                <td>{o.name}</td>
+                <td>{o.ticket_number}</td>
+                <td>{o.customer_name}</td>
                 <td>{o.phone || '—'}</td>
-                <td>{o.instagram || '—'}</td>
-                <td>{o.product_name || '—'}</td>
-                <td>{money(o.price)}</td>
+                <td>{o.contact_method || '—'}</td>
+                <td>{o.product_count}</td>
+                <td>{money(o.total_price)}</td>
                 <td>
                   <span
                     className={
@@ -134,11 +138,7 @@ export default function AllOrders() {
         <OrderDetail
           id={selectedId}
           onClose={() => setSelectedId(null)}
-          onSaved={load}
-          onDeleted={() => {
-            setSelectedId(null);
-            load();
-          }}
+          onChanged={load}
         />
       )}
     </div>

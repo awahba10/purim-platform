@@ -1,158 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money } from '../util';
+import { money, productToDraft, draftToPayload } from '../util';
+import ProductFields from './ProductFields';
 
-function ProductForm({ materials, product, onClose, onSaved }) {
-  const [name, setName] = useState(product?.name || '');
-  const [quantity, setQuantity] = useState(product?.quantity ?? 0);
-  const [cost, setCost] = useState(product?.cost ?? '');
-  const [price, setPrice] = useState(product?.price ?? '');
-  const [links, setLinks] = useState(() => {
-    const map = {};
-    (product?.materials || []).forEach((m) => {
-      map[m.material_id] = m.quantity_used;
-    });
-    return map;
-  });
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+const COLUMNS = [
+  { key: 'ticket_number', label: 'Ticket' },
+  { key: 'customer_name', label: 'Customer' },
+  { key: 'name', label: 'Product' },
+  { key: 'cost', label: 'Cost' },
+  { key: 'price', label: 'Price' },
+  { key: 'profit', label: 'Profit' },
+  { key: 'created_at', label: 'Created' },
+];
 
-  const toggle = (id) =>
-    setLinks((current) => {
-      const next = { ...current };
-      if (id in next) delete next[id];
-      else next[id] = 1;
-      return next;
-    });
-
-  const setLinkQty = (id, value) =>
-    setLinks((current) => ({
-      ...current,
-      [id]: Math.max(1, Number(value) || 1),
-    }));
-
-  const save = async () => {
-    if (!name.trim()) return setError('Please give the product a name.');
-    setBusy(true);
-    setError('');
-    const body = {
-      name: name.trim(),
-      quantity: Number(quantity) || 0,
-      cost: Number(cost) || 0,
-      price: Number(price) || 0,
-      materials: Object.entries(links).map(([material_id, quantity_used]) => ({
-        material_id: Number(material_id),
-        quantity_used,
-      })),
-    };
-    try {
-      if (product) await api.patch(`/products/${product.id}`, body);
-      else await api.post('/products', body);
-      onSaved();
-    } catch (e) {
-      setError(e.message);
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h2>{product ? 'Edit product' : 'New product'}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
-
-        <div className="form">
-          <label>
-            Name
-            <input value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
-          <div className="row">
-            <label>
-              In stock
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-            </label>
-            <label>
-              Cost to make
-              <input
-                type="number"
-                step="0.01"
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-              />
-            </label>
-            <label>
-              Sell price
-              <input
-                type="number"
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
-            </label>
-          </div>
-
-          <div>
-            <div className="subtle" style={{ marginBottom: 6 }}>
-              Materials used (check the ones this product needs)
-            </div>
-            {materials.length === 0 && (
-              <div className="subtle">
-                Add materials first in the Materials tab.
-              </div>
-            )}
-            <div className="check-list">
-              {materials.map((m) => (
-                <div key={m.id} className="check-row">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={m.id in links}
-                      onChange={() => toggle(m.id)}
-                    />
-                    {m.name}
-                  </label>
-                  {m.id in links && (
-                    <input
-                      type="number"
-                      min="1"
-                      value={links[m.id]}
-                      onChange={(e) => setLinkQty(m.id, e.target.value)}
-                      style={{ width: '70px' }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {error && <div className="error">{error}</div>}
-        </div>
-
-        <div className="modal-actions">
-          <button className="primary" onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : 'Save product'}
-          </button>
-          <button onClick={onClose}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const NUMERIC = new Set(['cost', 'price', 'profit']);
 
 export default function Products() {
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
+  const [editing, setEditing] = useState(null); // { product, draft }
   const [error, setError] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const load = () =>
     Promise.all([api.get('/products'), api.get('/materials')])
@@ -166,14 +36,68 @@ export default function Products() {
     load();
   }, []);
 
-  const afterSave = () => {
-    setShowForm(false);
-    setEditing(null);
-    load();
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    let list = products;
+    if (needle) {
+      list = list.filter((p) =>
+        [p.name, p.ticket_number, p.customer_name].some((v) =>
+          (v || '').toLowerCase().includes(needle)
+        )
+      );
+    }
+    const { key, dir } = sort;
+    return [...list].sort((a, b) => {
+      let av = a[key];
+      let bv = b[key];
+      if (NUMERIC.has(key)) {
+        av = Number(av);
+        bv = Number(bv);
+      } else if (key === 'created_at') {
+        av = new Date(av).getTime();
+        bv = new Date(bv).getTime();
+      } else {
+        av = (av == null ? '' : String(av)).toLowerCase();
+        bv = (bv == null ? '' : String(bv)).toLowerCase();
+      }
+      if (av < bv) return dir === 'asc' ? -1 : 1;
+      if (av > bv) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [products, query, sort]);
+
+  const toggleSort = (key) =>
+    setSort((s) =>
+      s.key === key
+        ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+
+  const save = async () => {
+    if (!editing.draft.name.trim()) return setError('The product needs a name.');
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(
+        `/products/${editing.product.id}`,
+        draftToPayload(editing.draft, materials)
+      );
+      setEditing(null);
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const remove = async (p) => {
-    if (!window.confirm(`Delete "${p.name}"?`)) return;
+    if (
+      !window.confirm(
+        `Delete "${p.name}" (ticket ${p.ticket_number})? Its materials go back to stock.`
+      )
+    )
+      return;
     try {
       await api.del(`/products/${p.id}`);
       load();
@@ -186,43 +110,44 @@ export default function Products() {
     <div className="panel">
       <h1>Products</h1>
       <p className="subtle">
-        Each product lists what it costs to make, what it sells for, and which
-        materials it uses.
+        Every product from every order — one row each. Editing here changes the same
+        record the order shows.
       </p>
-
-      <button
-        className="primary"
-        onClick={() => {
-          setEditing(null);
-          setShowForm(true);
-        }}
-      >
-        + Add product
-      </button>
-
+      <input
+        className="search"
+        placeholder="Search by product, ticket, or customer…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
       {error && <div className="error">{error}</div>}
 
       <div className="table-wrap">
         <table className="grid">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>In stock</th>
-              <th>Cost</th>
-              <th>Price</th>
-              <th>Profit</th>
-              <th>Materials used</th>
+              {COLUMNS.map((c) => (
+                <th key={c.key} onClick={() => toggleSort(c.key)}>
+                  {c.label}
+                  {sort.key === c.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
+                </th>
+              ))}
+              <th>Materials</th>
               <th className="right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p.id}>
+            {rows.map((p) => (
+              <tr
+                key={p.id}
+                onClick={() => setEditing({ product: p, draft: productToDraft(p) })}
+              >
+                <td>{p.ticket_number}</td>
+                <td>{p.customer_name}</td>
                 <td>{p.name}</td>
-                <td className={p.quantity < 0 ? 'neg' : ''}>{p.quantity}</td>
                 <td>{money(p.cost)}</td>
                 <td>{money(p.price)}</td>
-                <td>{money(p.price - p.cost)}</td>
+                <td>{money(p.profit)}</td>
+                <td>{new Date(p.created_at).toLocaleDateString()}</td>
                 <td className="subtle">
                   {p.materials.length
                     ? p.materials
@@ -232,23 +157,21 @@ export default function Products() {
                 </td>
                 <td className="right">
                   <button
-                    onClick={() => {
-                      setEditing(p);
-                      setShowForm(true);
+                    className="danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      remove(p);
                     }}
                   >
-                    Edit
-                  </button>
-                  <button className="danger" onClick={() => remove(p)}>
                     Delete
                   </button>
                 </td>
               </tr>
             ))}
-            {products.length === 0 && (
+            {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="subtle">
-                  No products yet.
+                <td colSpan={COLUMNS.length + 2} className="subtle">
+                  No products yet — create an order.
                 </td>
               </tr>
             )}
@@ -256,16 +179,32 @@ export default function Products() {
         </table>
       </div>
 
-      {showForm && (
-        <ProductForm
-          materials={materials}
-          product={editing}
-          onClose={() => {
-            setShowForm(false);
-            setEditing(null);
-          }}
-          onSaved={afterSave}
-        />
+      {editing && (
+        <div className="modal-backdrop" onClick={() => setEditing(null)}>
+          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>Edit product · ticket {editing.product.ticket_number}</h2>
+              <button
+                className="icon-btn"
+                onClick={() => setEditing(null)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <ProductFields
+              value={editing.draft}
+              catalog={materials}
+              onChange={(next) => setEditing((cur) => ({ ...cur, draft: next }))}
+            />
+            <div className="modal-actions">
+              <button className="primary" onClick={save} disabled={busy}>
+                Save changes
+              </button>
+              <button onClick={() => setEditing(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
