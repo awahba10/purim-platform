@@ -1,14 +1,18 @@
 import { jsPDF } from 'jspdf';
 import giftTemplateUrl from './assets/gift-label-template.png';
+import dancingScriptUrl from './fonts/DancingScript-Regular.ttf';
 
 // The clear text band inside the gift background, as fractions of the label.
 const GIFT_BOX = { x: 0.1, y: 0.34, w: 0.8, h: 0.32 };
+const GIFT_FONT = 'DancingScript';
+const DEFAULT_GIFT_MESSAGE = 'Chag Purim Sameach!';
 
 export function slotsPerSheet(t) {
   return Math.max(1, t.cols * t.rows);
 }
 
-// Where a product should be shipped/addressed to.
+// Where a product should be shipped/addressed to (shipping label rule: fall back
+// to the customer name when no recipient name was entered).
 export function labelRecipient(p) {
   return (p.recipient_name && p.recipient_name.trim()) || p.customer_name || '';
 }
@@ -26,13 +30,41 @@ export function loadGiftImage() {
   return giftImgPromise;
 }
 
-// Find the largest font size (in pt) at which all paragraphs, wrapped to `boxW`
-// inches, fit within `boxH` inches. Returns { size, lineH (in), lines[] }.
-function fitText(doc, paragraphs, boxW, boxH, { max = 12, min = 4 } = {}) {
-  doc.setFont('helvetica', 'normal');
+function arrayBufferToBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+let fontBase64Promise = null;
+function loadDancingScriptBase64() {
+  if (!fontBase64Promise) {
+    fontBase64Promise = fetch(dancingScriptUrl)
+      .then((r) => r.arrayBuffer())
+      .then(arrayBufferToBase64);
+  }
+  return fontBase64Promise;
+}
+
+// Register Dancing Script on a jsPDF document so setFont(GIFT_FONT) works.
+async function registerGiftFont(doc) {
+  const b64 = await loadDancingScriptBase64();
+  doc.addFileToVFS('DancingScript-Regular.ttf', b64);
+  doc.addFont('DancingScript-Regular.ttf', GIFT_FONT, 'normal');
+}
+
+// Largest font size (pt) at which all paragraphs, wrapped to `boxW` inches, fit
+// within `boxH` inches. Returns { size, lineH (in), lines[] }.
+function fitText(doc, paragraphs, boxW, boxH, opts = {}) {
+  const { max = 12, min = 4, font = 'helvetica' } = opts;
+  doc.setFont(font, 'normal');
   const build = (size) => {
     doc.setFontSize(size);
-    const lineH = (size / 72) * 1.2; // inches
+    const lineH = (size / 72) * 1.25; // inches
     let lines = [];
     for (const para of paragraphs) {
       if (para === '') {
@@ -84,16 +116,16 @@ function drawGiftLabel(doc, x, y, w, h, p, img) {
   const bw = GIFT_BOX.w * w;
   const bh = GIFT_BOX.h * h;
 
-  const paras = [
-    `To: ${labelRecipient(p)}`,
-    `From: ${p.customer_name || ''}`,
-    '',
-  ];
-  if (p.gift_message && p.gift_message.trim()) {
-    for (const line of String(p.gift_message).split(/\r?\n/)) paras.push(line);
-  }
+  const recipient = (p.recipient_name || '').trim();
+  const from = (p.customer_name || '').trim();
+  const toFromLine = recipient
+    ? `To: ${recipient}     From: ${from}`
+    : `From: ${from}`;
+  const message = (p.gift_message || '').trim() || DEFAULT_GIFT_MESSAGE;
 
-  const fit = fitText(doc, paras, bw, bh, { max: 13, min: 5 });
+  const paras = [toFromLine, '', ...String(message).split(/\r?\n/)];
+
+  const fit = fitText(doc, paras, bw, bh, { max: 16, min: 6, font: GIFT_FONT });
   doc.setTextColor(0, 0, 0);
   const blockH = fit.lines.length * fit.lineH;
   let ty = by + (bh - blockH) / 2 + fit.lineH * 0.85;
@@ -108,7 +140,12 @@ function drawGiftLabel(doc, x, y, w, h, p, img) {
 export async function generateLabelPdf({ kind, products, template: t, startSlot = 0 }) {
   const doc = new jsPDF({ unit: 'in', format: [t.page_w, t.page_h] });
   const per = slotsPerSheet(t);
-  const img = kind === 'gift' ? await loadGiftImage() : null;
+
+  let img = null;
+  if (kind === 'gift') {
+    img = await loadGiftImage();
+    await registerGiftFont(doc);
+  }
 
   products.forEach((p, i) => {
     const abs = startSlot + i;

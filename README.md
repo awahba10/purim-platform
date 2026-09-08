@@ -38,8 +38,11 @@ The Products tab generates print-ready label PDFs client-side (jsPDF):
   delivery instructions. Text auto-shrinks to fit.
 - **Gift labels** (default Avery 94101, 3" × 3") — a fixed background image
   (`client/src/assets/gift-label-template.png`, copied from
-  `Gift-Label-Template.PNG`) with To / From / gift message dropped into the clear
-  centre band; only the text scales, never the image.
+  `Gift-Label-Template.PNG`). Into the clear centre band it prints, in **Dancing
+  Script** (bundled at `client/src/fonts/DancingScript-Regular.ttf`, OFL): a
+  single `To: … From: …` line (`To:` is dropped when there's no recipient name),
+  then the gift message — the product's own message, or `Chag Purim Sameach!` if
+  none was entered. Only the text scales; the image is never touched.
 
 Sheet geometry (page size, label size, columns, rows, margins, gaps — all in
 inches) lives in the `label_templates` table, editable from the **⚙ Label
