@@ -55,6 +55,11 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_charge NUMERIC(10, 2) NOT
 ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_instructions TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS recipient_name TEXT;
 
+-- Independent "label printed" flags, flipped true when a product is included in a
+-- successful label export, manually toggleable back.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS gift_label_printed BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS shipping_label_printed BOOLEAN NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS product_materials (
   product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   material_id   INTEGER NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
@@ -88,4 +93,22 @@ CREATE TABLE IF NOT EXISTS delivery_locations (
   id   SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   cost NUMERIC(10, 2) NOT NULL DEFAULT 0
+);
+
+-- Label sheet templates for the PDF export. Two fixed rows keyed 'gift' and
+-- 'shipping'. All measurements are in INCHES on a US-Letter page. Fully editable
+-- from the Label Settings panel so a different Avery stock can be used later.
+CREATE TABLE IF NOT EXISTS label_templates (
+  key         TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  page_w      NUMERIC(6, 3) NOT NULL,
+  page_h      NUMERIC(6, 3) NOT NULL,
+  label_w     NUMERIC(6, 3) NOT NULL,
+  label_h     NUMERIC(6, 3) NOT NULL,
+  cols        INTEGER NOT NULL,
+  rows        INTEGER NOT NULL,
+  margin_top  NUMERIC(6, 3) NOT NULL,
+  margin_left NUMERIC(6, 3) NOT NULL,
+  gap_x       NUMERIC(6, 3) NOT NULL DEFAULT 0,
+  gap_y       NUMERIC(6, 3) NOT NULL DEFAULT 0
 );

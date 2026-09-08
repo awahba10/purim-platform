@@ -20,6 +20,8 @@ const toProduct = (p) => ({
   delivery_charge: Number(p.delivery_charge || 0),
   delivery_instructions: p.delivery_instructions || null,
   recipient_name: p.recipient_name || null,
+  gift_label_printed: Boolean(p.gift_label_printed),
+  shipping_label_printed: Boolean(p.shipping_label_printed),
   materials: mapMaterials(p.materials),
 });
 

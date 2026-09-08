@@ -9,6 +9,8 @@ import {
   validateProductDraft,
 } from '../util';
 import ProductFields from './ProductFields';
+import LabelExport from './LabelExport';
+import LabelSettings from './LabelSettings';
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
@@ -47,6 +49,8 @@ const CSV_COLUMNS = [
   },
   { label: 'Notes', get: (p) => p.notes || '' },
   { label: 'Gift message', get: (p) => p.gift_message || '' },
+  { label: 'Gift label', get: (p) => (p.gift_label_printed ? 'printed' : '') },
+  { label: 'Shipping label', get: (p) => (p.shipping_label_printed ? 'printed' : '') },
   { label: 'Created', get: (p) => new Date(p.created_at).toISOString() },
 ];
 
@@ -54,9 +58,13 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
-  const [editing, setEditing] = useState(null); // { product, draft }
+  const [editing, setEditing] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
+  const [labelExport, setLabelExport] = useState(null); // { kind }
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -65,11 +73,13 @@ export default function Products() {
       api.get('/products'),
       api.get('/materials'),
       api.get('/delivery-locations'),
+      api.get('/label-templates'),
     ])
-      .then(([p, m, d]) => {
+      .then(([p, m, d, t]) => {
         setProducts(p);
         setMaterials(m);
         setDeliveryLocations(d);
+        setTemplates(t);
       })
       .catch((e) => setError(e.message));
 
@@ -114,12 +124,71 @@ export default function Products() {
         : { key, dir: 'asc' }
     );
 
-  const exportCsv = () => {
+  const templateFor = (kind) => templates.find((t) => t.key === kind);
+
+  const allShownSelected = rows.length > 0 && rows.every((p) => selected.has(p.id));
+  const toggleAll = () =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (allShownSelected) rows.forEach((p) => next.delete(p.id));
+      else rows.forEach((p) => next.add(p.id));
+      return next;
+    });
+  const toggleOne = (id) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const selectedProducts = useMemo(
+    () =>
+      products
+        .filter((p) => selected.has(p.id))
+        .sort((a, b) => a.id - b.id),
+    [products, selected]
+  );
+
+  const startExport = (kind) => {
+    setError('');
+    if (!selectedProducts.length) {
+      setError('Tick the products you want labels for first.');
+      return;
+    }
+    if (!templateFor(kind)) {
+      setError('Label template not loaded yet — try again in a moment.');
+      return;
+    }
+    setLabelExport({ kind });
+  };
+
+  const markPrinted = async (ids, kind) => {
+    const field = kind === 'gift' ? 'gift_label_printed' : 'shipping_label_printed';
+    for (const id of ids) {
+      await api.patch(`/products/${id}`, { [field]: true });
+    }
+    setSelected(new Set());
+    await load();
+  };
+
+  const toggleFlag = async (p, field) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/products/${p.id}`, { [field]: !p[field] });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportCsv = () =>
     downloadCSV(
       `purim-products-${new Date().toISOString().slice(0, 10)}.csv`,
       toCSV(products, CSV_COLUMNS)
     );
-  };
 
   const save = async () => {
     const d = editing.draft;
@@ -170,32 +239,61 @@ export default function Products() {
     <div className="panel">
       <div className="panel-head">
         <h1>Products</h1>
-        <button onClick={exportCsv} disabled={products.length === 0}>
-          Export CSV
-        </button>
+        <div className="ph-actions">
+          <button
+            className="icon-btn gear"
+            title="Label settings"
+            aria-label="Label settings"
+            onClick={() => setShowSettings(true)}
+          >
+            ⚙
+          </button>
+          <button onClick={() => startExport('gift')}>Export Gift Labels</button>
+          <button onClick={() => startExport('shipping')}>
+            Export Shipping Labels
+          </button>
+          <button onClick={exportCsv} disabled={products.length === 0}>
+            Export CSV
+          </button>
+        </div>
       </div>
       <p className="subtle">
-        Every product from every order — one row each. Editing here changes the same
-        record the order shows.
+        Every product from every order — one row each. Tick rows (narrow the list
+        with search first) then use the label buttons above. Editing a row changes
+        the same record the order shows.
       </p>
-      <input
-        className="search"
-        placeholder="Search by product, ticket, customer, location, or address…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      <div className="row-between">
+        <input
+          className="search"
+          placeholder="Search by product, ticket, customer, location, or address…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {selected.size > 0 && (
+          <span className="subtle">{selected.size} selected</span>
+        )}
+      </div>
       {error && <div className="error">{error}</div>}
 
       <div className="table-wrap">
         <table className="grid">
           <thead>
             <tr>
+              <th className="chk-col">
+                <input
+                  type="checkbox"
+                  checked={allShownSelected}
+                  onChange={toggleAll}
+                  aria-label="Select all shown"
+                />
+              </th>
               {COLUMNS.map((c) => (
                 <th key={c.key} onClick={() => toggleSort(c.key)}>
                   {c.label}
                   {sort.key === c.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
                 </th>
               ))}
+              <th>Labels</th>
               <th>Materials</th>
               <th className="right">Actions</th>
             </tr>
@@ -204,8 +302,17 @@ export default function Products() {
             {rows.map((p) => (
               <tr
                 key={p.id}
+                className={selected.has(p.id) ? 'row-selected' : ''}
                 onClick={() => setEditing({ product: p, draft: productToDraft(p) })}
               >
+                <td className="chk-col" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(p.id)}
+                    onChange={() => toggleOne(p.id)}
+                    aria-label={`Select ${p.ticket_number}`}
+                  />
+                </td>
                 <td>{p.ticket_number}</td>
                 <td>{p.customer_name}</td>
                 <td>{p.name}</td>
@@ -229,6 +336,38 @@ export default function Products() {
                 <td>{money(p.price)}</td>
                 <td>{money(p.profit)}</td>
                 <td>{new Date(p.created_at).toLocaleDateString()}</td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <span className="label-flags">
+                    <button
+                      className={
+                        'flag ' + (p.gift_label_printed ? 'on' : 'off')
+                      }
+                      disabled={busy}
+                      title={
+                        p.gift_label_printed
+                          ? 'Gift label printed — click to clear'
+                          : 'Gift label not printed'
+                      }
+                      onClick={() => toggleFlag(p, 'gift_label_printed')}
+                    >
+                      G
+                    </button>
+                    <button
+                      className={
+                        'flag ' + (p.shipping_label_printed ? 'on' : 'off')
+                      }
+                      disabled={busy}
+                      title={
+                        p.shipping_label_printed
+                          ? 'Shipping label printed — click to clear'
+                          : 'Shipping label not printed'
+                      }
+                      onClick={() => toggleFlag(p, 'shipping_label_printed')}
+                    >
+                      S
+                    </button>
+                  </span>
+                </td>
                 <td className="subtle">
                   {p.materials.length
                     ? p.materials
@@ -251,7 +390,7 @@ export default function Products() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 2} className="subtle">
+                <td colSpan={COLUMNS.length + 4} className="subtle">
                   No products yet — create an order.
                 </td>
               </tr>
@@ -287,6 +426,20 @@ export default function Products() {
             </div>
           </div>
         </div>
+      )}
+
+      {labelExport && (
+        <LabelExport
+          kind={labelExport.kind}
+          products={selectedProducts}
+          template={templateFor(labelExport.kind)}
+          onClose={() => setLabelExport(null)}
+          onExported={(ids) => markPrinted(ids, labelExport.kind)}
+        />
+      )}
+
+      {showSettings && (
+        <LabelSettings onClose={() => setShowSettings(false)} onSaved={load} />
       )}
     </div>
   );

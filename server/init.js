@@ -44,6 +44,21 @@ async function init() {
     }
     console.log('[init] Seeded sample delivery locations.');
   }
+
+  const { rows: lt } = await pool.query(
+    'SELECT COUNT(*)::int AS n FROM label_templates'
+  );
+  if (lt[0].n === 0) {
+    // page_w, page_h, label_w, label_h, cols, rows, margin_top, margin_left, gap_x, gap_y
+    await pool.query(
+      `INSERT INTO label_templates
+         (key, name, page_w, page_h, label_w, label_h, cols, rows, margin_top, margin_left, gap_x, gap_y)
+       VALUES
+         ('gift', 'Gift Label (Avery 94101, 3x3 in)', 8.5, 11, 3, 3, 2, 3, 1, 1.25, 0.5, 0),
+         ('shipping', 'Shipping Label (Avery 5160, 1 x 2-5/8 in)', 8.5, 11, 2.625, 1, 3, 10, 0.5, 0.1875, 0.125, 0)`
+    );
+    console.log('[init] Seeded label templates (gift, shipping).');
+  }
 }
 
 async function seedMaterials() {

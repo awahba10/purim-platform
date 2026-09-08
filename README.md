@@ -11,7 +11,7 @@ Seven tabs down the left side:
 | **Materials** | List of supplies with a stock count and a per-unit **cost**. Add / edit any row. |
 | **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — no stock, not part of order/inventory logic. |
 | **Delivery Cost** | Reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
-| **Products** | Every product from every order — one row each, tagged with its ticket. Columns include Made toggle, Pickup/Delivery type, delivery location, address, and delivery charge. Editable in place (same record the order shows). **Export CSV** downloads every product row. |
+| **Products** | Every product from every order — one row each, tagged with its ticket. Columns include Made toggle, Pickup/Delivery type, delivery location, address, delivery charge, and two label-printed flags (**G**ift / **S**hipping — click to toggle). Editable in place (same record the order shows). Tick rows and use **Export Gift Labels** / **Export Shipping Labels** to make a print-ready PDF (pick the first empty slot on a partly-used Avery sheet, confirm the list, then download; picked products are marked printed). The **⚙** button opens **Label Settings** to adjust each sheet's dimensions. **Export CSV** downloads every product row. |
 | **Financials** | Auto-updating dashboard: total orders, total products sold, **total delivery income**, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
 
 ### Inventory logic
@@ -28,6 +28,25 @@ Each product has a Made / Not-made flag. An order's progress is derived from its
 products: **None Made** (zero made), **Some Made** (a mix), **All Made** (all made).
 Setting any value manually — including **Delivered** — freezes it as an override;
 the **Auto** button clears the override so it follows the products again.
+
+### Label export
+
+The Products tab generates print-ready label PDFs client-side (jsPDF):
+
+- **Shipping labels** (default Avery 5160, 1" × 2-5/8") — plain black text: ticket
+  ID, recipient (customer name if no recipient), delivery location, address,
+  delivery instructions. Text auto-shrinks to fit.
+- **Gift labels** (default Avery 94101, 3" × 3") — a fixed background image
+  (`client/src/assets/gift-label-template.png`, copied from
+  `Gift-Label-Template.PNG`) with To / From / gift message dropped into the clear
+  centre band; only the text scales, never the image.
+
+Sheet geometry (page size, label size, columns, rows, margins, gaps — all in
+inches) lives in the `label_templates` table, editable from the **⚙ Label
+Settings** panel with no code change. Before each export you pick the first empty
+slot so partly-used sheets aren't wasted, then confirm the list. Every exported
+product's matching **Gift/Shipping label printed** flag flips on automatically and
+can be clicked back off if a print jams.
 
 ## Tech
 

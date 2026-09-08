@@ -82,6 +82,12 @@ router.patch('/:id', async (req, res, next) => {
     if (f.recipient_name !== undefined) {
       put('recipient_name', String(f.recipient_name).trim() || null);
     }
+    if (f.gift_label_printed !== undefined) {
+      put('gift_label_printed', Boolean(f.gift_label_printed));
+    }
+    if (f.shipping_label_printed !== undefined) {
+      put('shipping_label_printed', Boolean(f.shipping_label_printed));
+    }
     if (sets.length) {
       vals.push(req.params.id);
       await client.query(
