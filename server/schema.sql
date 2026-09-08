@@ -50,6 +50,10 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS is_made BOOLEAN NOT NULL DEFAULT f
 ALTER TABLE products ADD COLUMN IF NOT EXISTS fulfillment TEXT NOT NULL DEFAULT 'Delivery';
 ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_location TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_charge NUMERIC(10, 2) NOT NULL DEFAULT 0;
+-- Free-text delivery instructions (e.g. "leave with doorman"), separate from the
+-- maker-facing "notes" field. Optional add-ons: recipient_name.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_instructions TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS recipient_name TEXT;
 
 CREATE TABLE IF NOT EXISTS product_materials (
   product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,

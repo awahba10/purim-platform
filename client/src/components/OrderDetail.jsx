@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { money, productToDraft, draftToPayload, newProductDraft } from '../util';
+import {
+  money,
+  productToDraft,
+  draftToPayload,
+  newProductDraft,
+  validateProductDraft,
+} from '../util';
 import ProductFields from './ProductFields';
 
 const PAYMENT = ['Not Paid', 'Paid'];
@@ -101,12 +107,9 @@ export default function OrderDetail({ id, onClose, onChanged }) {
 
   const saveProduct = async () => {
     const { mode, product, draft } = productModal;
-    if (!draft.name.trim()) {
-      setError('The product needs a name.');
-      return;
-    }
-    if (draft.fulfillment !== 'Pickup' && !draft.address.trim()) {
-      setError('A delivery product needs an address.');
+    const problem = validateProductDraft(draft);
+    if (problem) {
+      setError(problem);
       return;
     }
     setBusy(true);
@@ -294,8 +297,14 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 {p.fulfillment !== 'Pickup' && p.address && (
                   <div className="subtle">Ship to: {p.address}</div>
                 )}
-                {p.notes && <div className="subtle">Notes: {p.notes}</div>}
-                {p.gift_message && <div className="subtle">Message: {p.gift_message}</div>}
+                {p.delivery_instructions && (
+                  <div className="subtle">Delivery notes: {p.delivery_instructions}</div>
+                )}
+                {p.recipient_name && (
+                  <div className="subtle">For: {p.recipient_name}</div>
+                )}
+                {p.notes && <div className="subtle">Maker notes: {p.notes}</div>}
+                {p.gift_message && <div className="subtle">Gift message: {p.gift_message}</div>}
                 <div className="pc-actions">
                   <button disabled={busy} onClick={() => toggleMade(p)}>
                     {p.is_made ? 'Mark not made' : 'Mark made'}

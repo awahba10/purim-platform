@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money, productToDraft, draftToPayload, toCSV, downloadCSV } from '../util';
+import {
+  money,
+  productToDraft,
+  draftToPayload,
+  toCSV,
+  downloadCSV,
+  validateProductDraft,
+} from '../util';
 import ProductFields from './ProductFields';
 
 const COLUMNS = [
@@ -28,7 +35,9 @@ const CSV_COLUMNS = [
   { key: 'fulfillment', label: 'Fulfillment' },
   { key: 'delivery_location', label: 'Delivery location' },
   { key: 'address', label: 'Address' },
+  { key: 'delivery_instructions', label: 'Delivery instructions' },
   { label: 'Delivery charge', get: (p) => Number(p.delivery_charge || 0).toFixed(2) },
+  { key: 'recipient_name', label: 'Recipient' },
   { label: 'Cost', get: (p) => p.cost.toFixed(2) },
   { label: 'Price', get: (p) => p.price.toFixed(2) },
   { label: 'Profit', get: (p) => p.profit.toFixed(2) },
@@ -114,10 +123,8 @@ export default function Products() {
 
   const save = async () => {
     const d = editing.draft;
-    if (!d.name.trim()) return setError('The product needs a name.');
-    if (d.fulfillment !== 'Pickup' && !d.address.trim()) {
-      return setError('A delivery product needs an address.');
-    }
+    const problem = validateProductDraft(d);
+    if (problem) return setError(problem);
     setBusy(true);
     setError('');
     try {

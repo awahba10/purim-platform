@@ -18,6 +18,8 @@ const toProduct = (p) => ({
   fulfillment: p.fulfillment === 'Pickup' ? 'Pickup' : 'Delivery',
   delivery_location: p.delivery_location || null,
   delivery_charge: Number(p.delivery_charge || 0),
+  delivery_instructions: p.delivery_instructions || null,
+  recipient_name: p.recipient_name || null,
   materials: mapMaterials(p.materials),
 });
 
@@ -125,19 +127,28 @@ async function insertProduct(client, orderId, input) {
     ? null
     : (input.delivery_location || '').trim() || null;
   const deliveryCharge = isPickup ? 0 : Number(input.delivery_charge) || 0;
+  const deliveryInstructions = isPickup
+    ? null
+    : (input.delivery_instructions || '').trim() || null;
+  const recipientName = (input.recipient_name || '').trim() || null;
 
   if (!isPickup && !address) {
-    throw Object.assign(
-      new Error('Delivery products need an address'),
-      { status: 400 }
-    );
+    throw Object.assign(new Error('Delivery products need an address'), {
+      status: 400,
+    });
+  }
+  if (!isPickup && !deliveryLocation) {
+    throw Object.assign(new Error('Delivery products need a delivery location'), {
+      status: 400,
+    });
   }
 
   const { rows } = await client.query(
     `INSERT INTO products
        (order_id, name, address, notes, gift_message, cost, price,
-        fulfillment, delivery_location, delivery_charge)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        fulfillment, delivery_location, delivery_charge,
+        delivery_instructions, recipient_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
     [
       orderId,
       name,
@@ -149,6 +160,8 @@ async function insertProduct(client, orderId, input) {
       fulfillment,
       deliveryLocation,
       deliveryCharge,
+      deliveryInstructions,
+      recipientName,
     ]
   );
   const productId = rows[0].id;

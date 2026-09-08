@@ -27,31 +27,32 @@ export const suggestedCostOf = (selected, catalog) => {
 
 export const newProductDraft = () => ({
   _key: nextKey(),
+  // Section 1 — Product Details
   name: '',
-  fulfillment: 'Delivery',
-  address: '',
-  delivery_location: '',
-  delivery_charge: '0',
-  dcOther: false,
-  notes: '',
-  gift_message: '',
   price: '',
   cost: '',
   costTouched: false,
   materials: [], // [{ material_id, quantity_used }]
+  // Section 2 — Fulfillment
+  fulfillment: 'Delivery',
+  address: '',
+  delivery_location: '',
+  delivery_instructions: '',
+  delivery_charge: '0',
+  dcOther: false,
+  // Section 3 — Optional add-ons (each behind its own toggle)
+  recipientOn: false,
+  recipient_name: '',
+  giftOn: false,
+  gift_message: '',
+  notesOn: false,
+  notes: '',
 });
 
 // A saved product (from the API) -> an editable draft.
 export const productToDraft = (p) => ({
   _key: nextKey(),
   name: p.name || '',
-  fulfillment: p.fulfillment === 'Pickup' ? 'Pickup' : 'Delivery',
-  address: p.address || '',
-  delivery_location: p.delivery_location || '',
-  delivery_charge: String(p.delivery_charge ?? '0'),
-  dcOther: !isQuickCharge(p.delivery_charge ?? 0),
-  notes: p.notes || '',
-  gift_message: p.gift_message || '',
   price: String(p.price ?? ''),
   cost: String(p.cost ?? ''),
   costTouched: true,
@@ -59,6 +60,18 @@ export const productToDraft = (p) => ({
     material_id: m.material_id,
     quantity_used: m.quantity_used,
   })),
+  fulfillment: p.fulfillment === 'Pickup' ? 'Pickup' : 'Delivery',
+  address: p.address || '',
+  delivery_location: p.delivery_location || '',
+  delivery_instructions: p.delivery_instructions || '',
+  delivery_charge: String(p.delivery_charge ?? '0'),
+  dcOther: !isQuickCharge(p.delivery_charge ?? 0),
+  recipientOn: !!(p.recipient_name && p.recipient_name.trim()),
+  recipient_name: p.recipient_name || '',
+  giftOn: !!(p.gift_message && p.gift_message.trim()),
+  gift_message: p.gift_message || '',
+  notesOn: !!(p.notes && p.notes.trim()),
+  notes: p.notes || '',
 });
 
 // The fields a premade preset fills into a product draft. Everything stays
@@ -82,9 +95,11 @@ export const draftToPayload = (d, catalog) => {
     fulfillment: pickup ? 'Pickup' : 'Delivery',
     address: pickup ? '' : d.address.trim(),
     delivery_location: pickup ? '' : d.delivery_location.trim(),
+    delivery_instructions: pickup ? '' : d.delivery_instructions.trim(),
     delivery_charge: pickup ? 0 : Number(d.delivery_charge) || 0,
-    notes: d.notes.trim(),
-    gift_message: d.gift_message.trim(),
+    recipient_name: d.recipientOn ? d.recipient_name.trim() : '',
+    gift_message: d.giftOn ? d.gift_message.trim() : '',
+    notes: d.notesOn ? d.notes.trim() : '',
     price: Number(d.price) || 0,
     cost:
       d.cost === '' || d.cost === null
@@ -95,6 +110,31 @@ export const draftToPayload = (d, catalog) => {
       quantity_used: qtyOf(m.quantity_used),
     })),
   };
+};
+
+// Validate a product draft before it can be added/saved. Returns an error
+// string, or null if it's fine.
+export const validateProductDraft = (d) => {
+  if (!d.name.trim()) return 'Give the product a name.';
+  if (d.fulfillment !== 'Pickup') {
+    if (!d.address.trim()) return 'Delivery products need an address.';
+    if (!d.delivery_location.trim()) {
+      return 'Delivery products need a delivery location.';
+    }
+    if (d.dcOther && String(d.delivery_charge).trim() === '') {
+      return 'Enter the custom delivery charge.';
+    }
+  }
+  if (d.recipientOn && !d.recipient_name.trim()) {
+    return 'Recipient name is turned on but empty — fill it in or turn it off.';
+  }
+  if (d.giftOn && !d.gift_message.trim()) {
+    return 'Gift message is turned on but empty — fill it in or turn it off.';
+  }
+  if (d.notesOn && !d.notes.trim()) {
+    return 'Notes are turned on but empty — fill it in or turn it off.';
+  }
+  return null;
 };
 
 // --- CSV export ---

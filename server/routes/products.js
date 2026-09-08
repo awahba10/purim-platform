@@ -76,6 +76,12 @@ router.patch('/:id', async (req, res, next) => {
     ) {
       put('delivery_charge', Number(f.delivery_charge) || 0);
     }
+    if (f.delivery_instructions !== undefined) {
+      put('delivery_instructions', String(f.delivery_instructions).trim() || null);
+    }
+    if (f.recipient_name !== undefined) {
+      put('recipient_name', String(f.recipient_name).trim() || null);
+    }
     if (sets.length) {
       vals.push(req.params.id);
       await client.query(

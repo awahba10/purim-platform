@@ -6,6 +6,7 @@ import {
   newDraftKey,
   draftToPayload,
   suggestedCostOf,
+  validateProductDraft,
 } from '../util';
 import ProductFields from './ProductFields';
 
@@ -63,13 +64,9 @@ export default function NewOrder({ onCreated }) {
     setError('');
     if (!customer.customer_name.trim()) return setError('Enter the customer name.');
     if (!named.length) return setError('Add at least one product with a name.');
-    const missingAddr = named.find(
-      (p) => p.fulfillment !== 'Pickup' && !p.address.trim()
-    );
-    if (missingAddr) {
-      return setError(
-        `"${missingAddr.name.trim()}" is a delivery product — it needs an address.`
-      );
+    for (const p of named) {
+      const problem = validateProductDraft(p);
+      if (problem) return setError(`"${p.name.trim()}": ${problem}`);
     }
     setSaving(true);
     try {
