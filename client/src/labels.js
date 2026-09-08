@@ -7,6 +7,13 @@ const GIFT_BOX = { x: 0.1, y: 0.34, w: 0.8, h: 0.32 };
 const GIFT_FONT = 'DancingScript';
 const DEFAULT_GIFT_MESSAGE = 'Chag Purim Sameach!';
 
+// Gift-label sizing (points).
+const GIFT_MAX_PT = 16;
+const GIFT_MIN_ONELINE_PT = 9; // readable floor for a single "To … From …" line
+const GIFT_MIN_PT = 6; // absolute floor for anything on the gift label
+const LINE_FACTOR = 1.25;
+const lineHeightIn = (pt) => (pt / 72) * LINE_FACTOR;
+
 export function slotsPerSheet(t) {
   return Math.max(1, t.cols * t.rows);
 }
@@ -50,21 +57,19 @@ function loadDancingScriptBase64() {
   return fontBase64Promise;
 }
 
-// Register Dancing Script on a jsPDF document so setFont(GIFT_FONT) works.
 async function registerGiftFont(doc) {
   const b64 = await loadDancingScriptBase64();
   doc.addFileToVFS('DancingScript-Regular.ttf', b64);
   doc.addFont('DancingScript-Regular.ttf', GIFT_FONT, 'normal');
 }
 
-// Largest font size (pt) at which all paragraphs, wrapped to `boxW` inches, fit
-// within `boxH` inches. Returns { size, lineH (in), lines[] }.
+// ---- Shipping label: uniform auto-shrink over all lines ----
 function fitText(doc, paragraphs, boxW, boxH, opts = {}) {
   const { max = 12, min = 4, font = 'helvetica' } = opts;
   doc.setFont(font, 'normal');
   const build = (size) => {
     doc.setFontSize(size);
-    const lineH = (size / 72) * 1.25; // inches
+    const lineH = (size / 72) * LINE_FACTOR;
     let lines = [];
     for (const para of paragraphs) {
       if (para === '') {
@@ -108,6 +113,37 @@ function drawShippingLabel(doc, x, y, w, h, p) {
   }
 }
 
+// ---- Gift label To/From fitting ----
+
+// Largest size in [minPt, maxPt] (0.5 steps) at which every string fits `boxW`.
+function widestSizeForWidth(doc, strings, boxW, maxPt, minPt) {
+  for (let s = maxPt; s >= minPt; s -= 0.5) {
+    doc.setFontSize(s);
+    if (strings.every((str) => doc.getTextWidth(str) <= boxW)) return s;
+  }
+  return null;
+}
+
+// Largest size (<= capPt, >= floorPt) at which the fixed lines + blank + wrapped
+// message all fit within `boxH`. Returns { size, msgLines }.
+function wholeBlockSize(doc, fixedLines, message, boxW, boxH, capPt, floorPt) {
+  const measure = (s) => {
+    doc.setFontSize(s);
+    const fixedCount = fixedLines.reduce(
+      (n, l) => n + doc.splitTextToSize(l, boxW).length,
+      0
+    );
+    const msgLines = message ? doc.splitTextToSize(String(message), boxW) : [];
+    const total = fixedCount + (message ? 1 : 0) + msgLines.length;
+    return { msgLines, fits: total * lineHeightIn(s) <= boxH };
+  };
+  for (let s = capPt; s >= floorPt; s -= 0.5) {
+    const m = measure(s);
+    if (m.fits) return { size: s, msgLines: m.msgLines };
+  }
+  return { size: floorPt, msgLines: measure(floorPt).msgLines };
+}
+
 function drawGiftLabel(doc, x, y, w, h, p, img) {
   doc.addImage(img, 'PNG', x, y, w, h, 'giftbg', 'FAST');
 
@@ -116,22 +152,62 @@ function drawGiftLabel(doc, x, y, w, h, p, img) {
   const bw = GIFT_BOX.w * w;
   const bh = GIFT_BOX.h * h;
 
+  doc.setFont(GIFT_FONT, 'normal');
+
   const recipient = (p.recipient_name || '').trim();
   const from = (p.customer_name || '').trim();
-  const toFromLine = recipient
-    ? `To: ${recipient}     From: ${from}`
-    : `From: ${from}`;
   const message = (p.gift_message || '').trim() || DEFAULT_GIFT_MESSAGE;
 
-  const paras = [toFromLine, '', ...String(message).split(/\r?\n/)];
+  // Decide whether "To … From …" goes on one line or two, and the cap size.
+  let fixedLines;
+  let capPt;
+  if (!recipient) {
+    fixedLines = [`From: ${from}`];
+    capPt =
+      widestSizeForWidth(doc, fixedLines, bw, GIFT_MAX_PT, GIFT_MIN_PT) ||
+      GIFT_MIN_PT;
+  } else {
+    const oneLine = `To: ${recipient}     From: ${from}`;
+    const oneSize = widestSizeForWidth(
+      doc,
+      [oneLine],
+      bw,
+      GIFT_MAX_PT,
+      GIFT_MIN_ONELINE_PT
+    );
+    if (oneSize != null) {
+      fixedLines = [oneLine];
+      capPt = oneSize;
+    } else {
+      fixedLines = [`To: ${recipient}`, `From: ${from}`];
+      capPt =
+        widestSizeForWidth(doc, fixedLines, bw, GIFT_MAX_PT, GIFT_MIN_PT) ||
+        GIFT_MIN_PT;
+    }
+  }
 
-  const fit = fitText(doc, paras, bw, bh, { max: 16, min: 6, font: GIFT_FONT });
+  const { size, msgLines } = wholeBlockSize(
+    doc,
+    fixedLines,
+    message,
+    bw,
+    bh,
+    capPt,
+    GIFT_MIN_PT
+  );
+
+  doc.setFontSize(size);
   doc.setTextColor(0, 0, 0);
-  const blockH = fit.lines.length * fit.lineH;
-  let ty = by + (bh - blockH) / 2 + fit.lineH * 0.85;
-  for (const line of fit.lines) {
-    doc.text(line, x + w / 2, ty, { align: 'center' });
-    ty += fit.lineH;
+
+  // Wrap fixed lines too, as a final guard against clipping (no-op normally).
+  const renderedFixed = fixedLines.flatMap((l) => doc.splitTextToSize(l, bw));
+  const allLines = [...renderedFixed, '', ...msgLines];
+  const lh = lineHeightIn(size);
+  const blockH = allLines.length * lh;
+  let ty = by + Math.max(0, (bh - blockH) / 2) + lh * 0.85;
+  for (const line of allLines) {
+    if (line !== '') doc.text(line, x + w / 2, ty, { align: 'center' });
+    ty += lh;
   }
 }
 

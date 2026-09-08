@@ -40,9 +40,11 @@ The Products tab generates print-ready label PDFs client-side (jsPDF):
   (`client/src/assets/gift-label-template.png`, copied from
   `Gift-Label-Template.PNG`). Into the clear centre band it prints, in **Dancing
   Script** (bundled at `client/src/fonts/DancingScript-Regular.ttf`, OFL): a
-  single `To: … From: …` line (`To:` is dropped when there's no recipient name),
-  then the gift message — the product's own message, or `Chag Purim Sameach!` if
-  none was entered. Only the text scales; the image is never touched.
+  `To: … From: …` line (`To:` is dropped when there's no recipient name) that
+  shrinks to fit one line down to a readable floor and, only if it still won't
+  fit, splits cleanly onto two lines (`To: …` / `From: …`); then the gift message
+  — the product's own message, or `Chag Purim Sameach!` if none was entered. Text
+  never clips or overlaps; the image is never touched.
 
 Sheet geometry (page size, label size, columns, rows, margins, gaps — all in
 inches) lives in the `label_templates` table, editable from the **⚙ Label
