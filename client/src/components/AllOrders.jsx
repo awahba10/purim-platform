@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money } from '../util';
+import { money, toCSV, downloadCSV } from '../util';
 import OrderDetail from './OrderDetail';
+
+const CSV_COLUMNS = [
+  { key: 'ticket_number', label: 'Ticket' },
+  { key: 'customer_name', label: 'Customer' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'contact_method', label: 'Contact' },
+  { key: 'product_count', label: 'Products' },
+  { label: 'Total cost', get: (o) => o.total_cost.toFixed(2) },
+  { label: 'Total product charge', get: (o) => o.total_price.toFixed(2) },
+  { label: 'Total profit', get: (o) => o.total_profit.toFixed(2) },
+  { key: 'payment_status', label: 'Payment' },
+  { key: 'progress_status', label: 'Progress' },
+  { label: 'Progress source', get: (o) => (o.progress_is_auto ? 'auto' : 'manual') },
+  { label: 'Created', get: (o) => new Date(o.created_at).toISOString() },
+];
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
@@ -74,9 +89,21 @@ export default function AllOrders() {
         : { key, dir: 'asc' }
     );
 
+  const exportCsv = () => {
+    downloadCSV(
+      `purim-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(orders, CSV_COLUMNS)
+    );
+  };
+
   return (
     <div className="panel">
-      <h1>All Orders</h1>
+      <div className="panel-head">
+        <h1>All Orders</h1>
+        <button onClick={exportCsv} disabled={orders.length === 0}>
+          Export CSV
+        </button>
+      </div>
       <input
         className="search"
         placeholder="Search by customer, phone, contact, or ticket…"

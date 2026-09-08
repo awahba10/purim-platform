@@ -44,6 +44,13 @@ CREATE TABLE IF NOT EXISTS products (
 -- Per-product progress: has this product been assembled yet?
 ALTER TABLE products ADD COLUMN IF NOT EXISTS is_made BOOLEAN NOT NULL DEFAULT false;
 
+-- Per-product fulfillment. 'Delivery' products carry an address, a delivery
+-- location name (free text), and a manually chosen delivery charge. 'Pickup'
+-- products carry none of those.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS fulfillment TEXT NOT NULL DEFAULT 'Delivery';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_location TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_charge NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS product_materials (
   product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   material_id   INTEGER NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
@@ -70,3 +77,11 @@ CREATE TABLE IF NOT EXISTS preset_materials (
 );
 
 CREATE INDEX IF NOT EXISTS idx_preset_materials_preset ON preset_materials(preset_id);
+
+-- Delivery locations: a reference list only. The cost figure is never applied
+-- automatically anywhere; only the names feed the New Order location selector.
+CREATE TABLE IF NOT EXISTS delivery_locations (
+  id   SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  cost NUMERIC(10, 2) NOT NULL DEFAULT 0
+);

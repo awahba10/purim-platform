@@ -27,6 +27,23 @@ async function init() {
   if (rows[0].n === 0) {
     await seedMaterials();
   }
+
+  const { rows: dl } = await pool.query(
+    'SELECT COUNT(*)::int AS n FROM delivery_locations'
+  );
+  if (dl[0].n === 0) {
+    for (const [name, cost] of [
+      ['Local (same neighborhood)', 5],
+      ['Across town', 10],
+      ['Next town over', 15],
+    ]) {
+      await pool.query(
+        'INSERT INTO delivery_locations (name, cost) VALUES ($1, $2)',
+        [name, cost]
+      );
+    }
+    console.log('[init] Seeded sample delivery locations.');
+  }
 }
 
 async function seedMaterials() {

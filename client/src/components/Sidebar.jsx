@@ -3,6 +3,7 @@ const ICONS = {
   'All Orders': '📋',
   Materials: '📦',
   'Premade Products': '⭐',
+  'Delivery Cost': '🚚',
   Products: '🎁',
   Financials: '💰',
 };

@@ -2,16 +2,17 @@
 
 A simple web app for managing holiday tray orders for a community giveaway.
 
-Six tabs down the left side:
+Seven tabs down the left side:
 
 | Tab | What it does |
 | --- | --- |
-| **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product has its own name, delivery address, notes, gift message, and materials (tap-to-add chips, with a quantity each). Cost is auto-suggested from the materials but can be overridden; price is separate. Optionally start a product from a **premade preset** to fill everything in, or **Duplicate** a product entry. A running summary shows every product and the order's total cost and total charge. A ticket number is assigned on submit. |
-| **All Orders** | Spreadsheet-style list, one row per order. Sort any column, search by customer / phone / contact / ticket. Click a row for full detail including every product. **Payment status** (Not Paid / Paid) is manual. **Progress status** has four values — None Made / Some Made / All Made / Delivered — calculated automatically from the Made/Not-made state of the order's products, and overridable per order (with an **Auto** button to revert). |
-| **Materials** | List of supplies with a stock count and a per-unit **cost**. Add a custom material; edit any row. |
-| **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — holds no stock and is not part of order or inventory logic. |
-| **Products** | Every product from every order — one row each, tagged with its ticket number, showing its materials, cost, price, and a **Made / Not made** toggle. Editable in place; edits are the same record the order shows. |
-| **Financials** | Auto-updating dashboard: total orders, total products sold, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
+| **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product carries a **Pickup / Delivery** tag. Delivery products ask for a required address, a delivery location (pick from the Delivery Cost list or type a new one), and a delivery charge chosen from quick buttons ($0/$5/$10/$15/Other). Pickup products skip all three. Each product also has notes, a gift message, and materials (tap-to-add chips with a quantity each); cost is auto-suggested from the materials but overridable, price is separate. Start a product from a **premade preset** or **Duplicate** an entry. A running summary shows every product, the product charge, the delivery charge, and the grand total. A ticket number is assigned on submit. |
+| **All Orders** | Spreadsheet-style list, one row per order. Sort/search; click a row for full detail. **Payment status** (Not Paid / Paid) is manual. **Progress status** — None Made / Some Made / All Made / Delivered — is auto-calculated from the products' Made state and overridable (with an **Auto** button). **Export CSV** (top-right) downloads every order regardless of the on-screen search/sort. |
+| **Materials** | List of supplies with a stock count and a per-unit **cost**. Add / edit any row. |
+| **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — no stock, not part of order/inventory logic. |
+| **Delivery Cost** | Reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
+| **Products** | Every product from every order — one row each, tagged with its ticket. Columns include Made toggle, Pickup/Delivery type, delivery location, address, and delivery charge. Editable in place (same record the order shows). **Export CSV** downloads every product row. |
+| **Financials** | Auto-updating dashboard: total orders, total products sold, **total delivery income**, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
 
 ### Inventory logic
 

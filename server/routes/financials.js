@@ -9,7 +9,7 @@ router.get('/', async (req, res, next) => {
       'SELECT COUNT(*)::int AS n FROM orders'
     );
     const { rows } = await pool.query(
-      `SELECT o.payment_status, p.price, p.cost
+      `SELECT o.payment_status, p.price, p.cost, p.delivery_charge
          FROM products p
          JOIN orders o ON o.id = p.order_id`
     );
@@ -18,10 +18,12 @@ router.get('/', async (req, res, next) => {
     let notPaidRevenue = 0;
     let paidProfit = 0;
     let notPaidProfit = 0;
+    let deliveryIncome = 0;
 
     for (const r of rows) {
       const price = Number(r.price);
       const profit = price - Number(r.cost);
+      deliveryIncome += Number(r.delivery_charge || 0);
       if (r.payment_status === 'Paid') {
         paidRevenue += price;
         paidProfit += profit;
@@ -34,6 +36,7 @@ router.get('/', async (req, res, next) => {
     res.json({
       totalOrders: orderCount[0].n,
       totalProductsSold: rows.length,
+      deliveryIncome,
       revenue: {
         paid: paidRevenue,
         notPaid: notPaidRevenue,

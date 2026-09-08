@@ -1,4 +1,5 @@
-import { money, round2, suggestedCostOf, presetToDraftPatch } from '../util';
+import { useId } from 'react';
+import { money, round2, suggestedCostOf, presetToDraftPatch, DELIVERY_QUICK } from '../util';
 import MaterialPicker from './MaterialPicker';
 
 // Editable fields for a single product. `value` is a product draft (see util.js).
@@ -8,12 +9,15 @@ export default function ProductFields({
   onChange,
   catalog,
   presets,
+  deliveryLocations,
   onRemove,
   onDuplicate,
   title,
 }) {
+  const dlId = 'dl' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const set = (patch) => onChange({ ...value, ...patch });
   const suggested = suggestedCostOf(value.materials, catalog);
+  const isPickup = value.fulfillment === 'Pickup';
 
   const applyPreset = (id) => {
     const preset = (presets || []).find((p) => String(p.id) === String(id));
@@ -78,15 +82,87 @@ export default function ProductFields({
         />
       </label>
 
-      <label>
-        Delivery address for this product
-        <textarea
-          rows={2}
-          value={value.address}
-          onChange={(e) => set({ address: e.target.value })}
-          placeholder="123 Main St, Apt 4 — can differ per product"
-        />
-      </label>
+      <div>
+        <div className="fld-label">Fulfillment</div>
+        <div className="pill-group">
+          {['Delivery', 'Pickup'].map((f) => (
+            <button
+              type="button"
+              key={f}
+              className={value.fulfillment === f ? 'pill active' : 'pill'}
+              onClick={() => set({ fulfillment: f })}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!isPickup && (
+        <>
+          <label>
+            Delivery address *
+            <textarea
+              rows={2}
+              value={value.address}
+              onChange={(e) => set({ address: e.target.value })}
+              placeholder="123 Main St, Apt 4 — can differ per product"
+            />
+          </label>
+
+          <label>
+            Delivery location
+            <input
+              list={dlId}
+              value={value.delivery_location}
+              onChange={(e) => set({ delivery_location: e.target.value })}
+              placeholder="Pick from the list or type a new one"
+            />
+            <datalist id={dlId}>
+              {(deliveryLocations || []).map((l) => (
+                <option key={l.id} value={l.name} />
+              ))}
+            </datalist>
+          </label>
+
+          <div>
+            <div className="fld-label">Delivery charge for this product</div>
+            <div className="quickselect">
+              {DELIVERY_QUICK.map((n) => (
+                <button
+                  type="button"
+                  key={n}
+                  className={
+                    !value.dcOther && Number(value.delivery_charge) === n
+                      ? 'qs active'
+                      : 'qs'
+                  }
+                  onClick={() => set({ delivery_charge: String(n), dcOther: false })}
+                >
+                  ${n}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={value.dcOther ? 'qs active' : 'qs'}
+                onClick={() => set({ dcOther: true })}
+              >
+                Other
+              </button>
+            </div>
+            {value.dcOther && (
+              <input
+                type="number"
+                step="0.01"
+                value={value.delivery_charge}
+                onChange={(e) => set({ delivery_charge: e.target.value })}
+                placeholder="Custom amount"
+                style={{ marginTop: 8, maxWidth: 160 }}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       <div className="row">
         <label>

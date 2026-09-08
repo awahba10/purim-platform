@@ -4,6 +4,7 @@ import NewOrder from './components/NewOrder';
 import AllOrders from './components/AllOrders';
 import Materials from './components/Materials';
 import Premade from './components/Premade';
+import DeliveryCost from './components/DeliveryCost';
 import Products from './components/Products';
 import Financials from './components/Financials';
 
@@ -12,6 +13,7 @@ const TABS = [
   'All Orders',
   'Materials',
   'Premade Products',
+  'Delivery Cost',
   'Products',
   'Financials',
 ];
@@ -29,6 +31,7 @@ export default function App() {
         {tab === 'All Orders' && <AllOrders />}
         {tab === 'Materials' && <Materials />}
         {tab === 'Premade Products' && <Premade />}
+        {tab === 'Delivery Cost' && <DeliveryCost />}
         {tab === 'Products' && <Products />}
         {tab === 'Financials' && <Financials />}
       </main>

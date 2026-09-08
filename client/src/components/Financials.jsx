@@ -54,6 +54,10 @@ export default function Financials() {
       <div className="cards">
         <Card label="Total orders" value={data.totalOrders} />
         <Card label="Total products sold" value={data.totalProductsSold} />
+        <Card
+          label="Total delivery income"
+          value={money(data.deliveryIncome || 0)}
+        />
       </div>
 
       <h3>Revenue</h3>

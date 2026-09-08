@@ -63,6 +63,19 @@ router.patch('/:id', async (req, res, next) => {
       put('price', Number(f.price) || 0);
     }
     if (f.is_made !== undefined) put('is_made', Boolean(f.is_made));
+    if (f.fulfillment !== undefined) {
+      put('fulfillment', f.fulfillment === 'Pickup' ? 'Pickup' : 'Delivery');
+    }
+    if (f.delivery_location !== undefined) {
+      put('delivery_location', String(f.delivery_location).trim() || null);
+    }
+    if (
+      f.delivery_charge !== undefined &&
+      f.delivery_charge !== '' &&
+      f.delivery_charge !== null
+    ) {
+      put('delivery_charge', Number(f.delivery_charge) || 0);
+    }
     if (sets.length) {
       vals.push(req.params.id);
       await client.query(

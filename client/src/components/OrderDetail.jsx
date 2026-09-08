@@ -19,6 +19,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
   const [order, setOrder] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [presets, setPresets] = useState([]);
+  const [deliveryLocations, setDeliveryLocations] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
@@ -38,6 +39,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
     load();
     api.get('/materials').then(setMaterials).catch(() => {});
     api.get('/presets').then(setPresets).catch(() => {});
+    api.get('/delivery-locations').then(setDeliveryLocations).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -101,6 +103,10 @@ export default function OrderDetail({ id, onClose, onChanged }) {
     const { mode, product, draft } = productModal;
     if (!draft.name.trim()) {
       setError('The product needs a name.');
+      return;
+    }
+    if (draft.fulfillment !== 'Pickup' && !draft.address.trim()) {
+      setError('A delivery product needs an address.');
       return;
     }
     setBusy(true);
@@ -278,7 +284,16 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                   {'  ·  profit '}
                   {money(p.profit)}
                 </div>
-                {p.address && <div className="subtle">Ship to: {p.address}</div>}
+                <div className="subtle">
+                  {p.fulfillment === 'Pickup'
+                    ? 'Pickup'
+                    : `Delivery${
+                        p.delivery_location ? ` · ${p.delivery_location}` : ''
+                      } · charge ${money(p.delivery_charge)}`}
+                </div>
+                {p.fulfillment !== 'Pickup' && p.address && (
+                  <div className="subtle">Ship to: {p.address}</div>
+                )}
                 {p.notes && <div className="subtle">Notes: {p.notes}</div>}
                 {p.gift_message && <div className="subtle">Message: {p.gift_message}</div>}
                 <div className="pc-actions">
@@ -354,6 +369,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
               value={productModal.draft}
               catalog={materials}
               presets={presets}
+              deliveryLocations={deliveryLocations}
               onChange={(next) => setProductModal((pm) => ({ ...pm, draft: next }))}
             />
             <div className="modal-actions">

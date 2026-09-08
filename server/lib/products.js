@@ -15,6 +15,9 @@ const toProduct = (p) => ({
   price: Number(p.price),
   profit: Number(p.price) - Number(p.cost),
   is_made: Boolean(p.is_made),
+  fulfillment: p.fulfillment === 'Pickup' ? 'Pickup' : 'Delivery',
+  delivery_location: p.delivery_location || null,
+  delivery_charge: Number(p.delivery_charge || 0),
   materials: mapMaterials(p.materials),
 });
 
@@ -115,17 +118,37 @@ async function insertProduct(client, orderId, input) {
       ? await suggestedCost(client, materials)
       : Number(input.cost) || 0;
 
+  const isPickup = input.fulfillment === 'Pickup';
+  const fulfillment = isPickup ? 'Pickup' : 'Delivery';
+  const address = isPickup ? null : (input.address || '').trim() || null;
+  const deliveryLocation = isPickup
+    ? null
+    : (input.delivery_location || '').trim() || null;
+  const deliveryCharge = isPickup ? 0 : Number(input.delivery_charge) || 0;
+
+  if (!isPickup && !address) {
+    throw Object.assign(
+      new Error('Delivery products need an address'),
+      { status: 400 }
+    );
+  }
+
   const { rows } = await client.query(
-    `INSERT INTO products (order_id, name, address, notes, gift_message, cost, price)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    `INSERT INTO products
+       (order_id, name, address, notes, gift_message, cost, price,
+        fulfillment, delivery_location, delivery_charge)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
     [
       orderId,
       name,
-      (input.address || '').trim() || null,
+      address,
       (input.notes || '').trim() || null,
       (input.gift_message || '').trim() || null,
       cost,
       Number(input.price) || 0,
+      fulfillment,
+      deliveryLocation,
+      deliveryCharge,
     ]
   );
   const productId = rows[0].id;

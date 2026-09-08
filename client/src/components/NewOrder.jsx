@@ -12,6 +12,7 @@ import ProductFields from './ProductFields';
 export default function NewOrder({ onCreated }) {
   const [materials, setMaterials] = useState([]);
   const [presets, setPresets] = useState([]);
+  const [deliveryLocations, setDeliveryLocations] = useState([]);
   const [customer, setCustomer] = useState({
     customer_name: '',
     phone: '',
@@ -24,6 +25,7 @@ export default function NewOrder({ onCreated }) {
   useEffect(() => {
     api.get('/materials').then(setMaterials).catch((e) => setError(e.message));
     api.get('/presets').then(setPresets).catch(() => {});
+    api.get('/delivery-locations').then(setDeliveryLocations).catch(() => {});
   }, []);
 
   const setC = (k, v) => setCustomer((c) => ({ ...c, [k]: v }));
@@ -50,14 +52,25 @@ export default function NewOrder({ onCreated }) {
   const named = products.filter((p) => p.name.trim());
   const costOf = (p) =>
     p.cost === '' ? suggestedCostOf(p.materials, materials) : Number(p.cost) || 0;
+  const deliveryOf = (p) =>
+    p.fulfillment === 'Pickup' ? 0 : Number(p.delivery_charge) || 0;
   const totalCost = named.reduce((s, p) => s + costOf(p), 0);
   const totalCharge = named.reduce((s, p) => s + (Number(p.price) || 0), 0);
+  const totalDelivery = named.reduce((s, p) => s + deliveryOf(p), 0);
 
   const submit = async (e) => {
     e.preventDefault();
     setError('');
     if (!customer.customer_name.trim()) return setError('Enter the customer name.');
     if (!named.length) return setError('Add at least one product with a name.');
+    const missingAddr = named.find(
+      (p) => p.fulfillment !== 'Pickup' && !p.address.trim()
+    );
+    if (missingAddr) {
+      return setError(
+        `"${missingAddr.name.trim()}" is a delivery product — it needs an address.`
+      );
+    }
     setSaving(true);
     try {
       const order = await api.post('/orders', {
@@ -116,6 +129,7 @@ export default function NewOrder({ onCreated }) {
             value={p}
             catalog={materials}
             presets={presets}
+            deliveryLocations={deliveryLocations}
             onChange={(next) => setProduct(i, next)}
             onDuplicate={() => duplicateProduct(i)}
             onRemove={products.length > 1 ? () => removeProduct(i) : null}
@@ -142,6 +156,12 @@ export default function NewOrder({ onCreated }) {
                   : 'No materials'}
                 {'  ·  cost '}
                 {money(costOf(p))}
+                {'  ·  '}
+                {p.fulfillment === 'Pickup'
+                  ? 'Pickup'
+                  : `Delivery${p.delivery_location ? ` to ${p.delivery_location}` : ''} (+${money(
+                      deliveryOf(p)
+                    )})`}
               </div>
             </div>
           ))}
@@ -151,8 +171,16 @@ export default function NewOrder({ onCreated }) {
               <strong>{money(totalCost)}</strong>
             </div>
             <div>
-              <span className="subtle">Total charge</span>
+              <span className="subtle">Product charge</span>
               <strong>{money(totalCharge)}</strong>
+            </div>
+            <div>
+              <span className="subtle">Delivery charge</span>
+              <strong>{money(totalDelivery)}</strong>
+            </div>
+            <div>
+              <span className="subtle">Grand total</span>
+              <strong>{money(totalCharge + totalDelivery)}</strong>
             </div>
           </div>
         </div>

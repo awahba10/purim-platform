@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { money, productToDraft, draftToPayload } from '../util';
+import { money, productToDraft, draftToPayload, toCSV, downloadCSV } from '../util';
 import ProductFields from './ProductFields';
 
 const COLUMNS = [
@@ -8,17 +8,43 @@ const COLUMNS = [
   { key: 'customer_name', label: 'Customer' },
   { key: 'name', label: 'Product' },
   { key: 'is_made', label: 'Made' },
+  { key: 'fulfillment', label: 'Type' },
+  { key: 'delivery_location', label: 'Location' },
+  { key: 'address', label: 'Address' },
+  { key: 'delivery_charge', label: 'Delivery $' },
   { key: 'cost', label: 'Cost' },
   { key: 'price', label: 'Price' },
   { key: 'profit', label: 'Profit' },
   { key: 'created_at', label: 'Created' },
 ];
 
-const NUMERIC = new Set(['cost', 'price', 'profit', 'is_made']);
+const NUMERIC = new Set(['cost', 'price', 'profit', 'is_made', 'delivery_charge']);
+
+const CSV_COLUMNS = [
+  { key: 'ticket_number', label: 'Ticket' },
+  { key: 'customer_name', label: 'Customer' },
+  { key: 'name', label: 'Product' },
+  { label: 'Made', get: (p) => (p.is_made ? 'Made' : 'Not made') },
+  { key: 'fulfillment', label: 'Fulfillment' },
+  { key: 'delivery_location', label: 'Delivery location' },
+  { key: 'address', label: 'Address' },
+  { label: 'Delivery charge', get: (p) => Number(p.delivery_charge || 0).toFixed(2) },
+  { label: 'Cost', get: (p) => p.cost.toFixed(2) },
+  { label: 'Price', get: (p) => p.price.toFixed(2) },
+  { label: 'Profit', get: (p) => p.profit.toFixed(2) },
+  {
+    label: 'Materials',
+    get: (p) => p.materials.map((m) => `${m.material_name} x${m.quantity_used}`).join('; '),
+  },
+  { label: 'Notes', get: (p) => p.notes || '' },
+  { label: 'Gift message', get: (p) => p.gift_message || '' },
+  { label: 'Created', get: (p) => new Date(p.created_at).toISOString() },
+];
 
 export default function Products() {
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [deliveryLocations, setDeliveryLocations] = useState([]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
   const [editing, setEditing] = useState(null); // { product, draft }
@@ -26,10 +52,15 @@ export default function Products() {
   const [busy, setBusy] = useState(false);
 
   const load = () =>
-    Promise.all([api.get('/products'), api.get('/materials')])
-      .then(([p, m]) => {
+    Promise.all([
+      api.get('/products'),
+      api.get('/materials'),
+      api.get('/delivery-locations'),
+    ])
+      .then(([p, m, d]) => {
         setProducts(p);
         setMaterials(m);
+        setDeliveryLocations(d);
       })
       .catch((e) => setError(e.message));
 
@@ -42,8 +73,8 @@ export default function Products() {
     let list = products;
     if (needle) {
       list = list.filter((p) =>
-        [p.name, p.ticket_number, p.customer_name].some((v) =>
-          (v || '').toLowerCase().includes(needle)
+        [p.name, p.ticket_number, p.customer_name, p.delivery_location, p.address].some(
+          (v) => (v || '').toLowerCase().includes(needle)
         )
       );
     }
@@ -74,15 +105,23 @@ export default function Products() {
         : { key, dir: 'asc' }
     );
 
+  const exportCsv = () => {
+    downloadCSV(
+      `purim-products-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(products, CSV_COLUMNS)
+    );
+  };
+
   const save = async () => {
-    if (!editing.draft.name.trim()) return setError('The product needs a name.');
+    const d = editing.draft;
+    if (!d.name.trim()) return setError('The product needs a name.');
+    if (d.fulfillment !== 'Pickup' && !d.address.trim()) {
+      return setError('A delivery product needs an address.');
+    }
     setBusy(true);
     setError('');
     try {
-      await api.patch(
-        `/products/${editing.product.id}`,
-        draftToPayload(editing.draft, materials)
-      );
+      await api.patch(`/products/${editing.product.id}`, draftToPayload(d, materials));
       setEditing(null);
       load();
     } catch (e) {
@@ -122,14 +161,19 @@ export default function Products() {
 
   return (
     <div className="panel">
-      <h1>Products</h1>
+      <div className="panel-head">
+        <h1>Products</h1>
+        <button onClick={exportCsv} disabled={products.length === 0}>
+          Export CSV
+        </button>
+      </div>
       <p className="subtle">
         Every product from every order — one row each. Editing here changes the same
         record the order shows.
       </p>
       <input
         className="search"
-        placeholder="Search by product, ticket, or customer…"
+        placeholder="Search by product, ticket, customer, location, or address…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -170,6 +214,10 @@ export default function Products() {
                     {p.is_made ? 'Made' : 'Not made'}
                   </button>
                 </td>
+                <td>{p.fulfillment}</td>
+                <td>{p.delivery_location || '—'}</td>
+                <td>{p.address || '—'}</td>
+                <td>{p.fulfillment === 'Pickup' ? '—' : money(p.delivery_charge)}</td>
                 <td>{money(p.cost)}</td>
                 <td>{money(p.price)}</td>
                 <td>{money(p.profit)}</td>
@@ -221,6 +269,7 @@ export default function Products() {
             <ProductFields
               value={editing.draft}
               catalog={materials}
+              deliveryLocations={deliveryLocations}
               onChange={(next) => setEditing((cur) => ({ ...cur, draft: next }))}
             />
             <div className="modal-actions">
