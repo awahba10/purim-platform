@@ -2,13 +2,15 @@
 
 A simple web app for managing holiday tray orders for a community giveaway.
 
-Eight tabs down the left side:
+Ten tabs down the left side (the sidebar is always visible):
 
 | Tab | What it does |
 | --- | --- |
+| **Home** | A plain navigation hub — a grid of buttons, one per tab, and nothing else. The default landing page. The sidebar stays visible everywhere; this is just a bigger set of shortcuts. |
 | **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product entry is grouped into three blocks: **1 · Product Details** (preset picker, name, materials with quantities, auto-suggested overridable cost, price), **2 · Fulfillment** (Pickup / Delivery toggle; Delivery requires an address, a delivery location — from the Delivery Cost list or a new one typed in — optional delivery instructions, and a delivery charge from quick buttons $0/$5/$10/$15/Other; Pickup skips all of it), and **3 · Optional Add-ons** (recipient name, gift message, maker notes — each behind its own toggle, and must be filled if turned on). Start a product from a **premade preset** or **Duplicate** an entry. A running summary shows every product, the product charge, the delivery charge, and the grand total. A ticket number is assigned on submit. |
 | **All Orders** | Spreadsheet-style list, one row per order. Sort/search; click a row for full detail. **Payment status** is manual: **Paid / Partially Paid / Not Paid**. **Production status** (None/Some/All Made) auto-calculates from the products' Made flags; **Delivery status** (None/Some/All Delivered) auto-calculates from the products' Delivered flags (set in a batch) — each is independently overridable with an **Auto** button. A collapsible **Filters** panel (Contact Method, Payment / Production / Delivery Status) narrows the list. **Export CSV** downloads every order regardless of the on-screen search/filter/sort. |
 | **Products** | Every product from every order — one row each. Editable in place (same record the order shows). A **Batch** column near the end shows a chip — "Assign to Batch" when unassigned, the batch name when assigned — that opens a popup to pick/change/create a batch. A collapsible **Filters** panel (Product Name, Pickup/Delivery, Location, Gift Label, Shipping Label, Delivery Batch) narrows the list. Press **Select** for selection mode: click a row to select it, shift-click for a range; an action bar then offers **Delete**, **Export Gift Labels**, **Export Shipping Labels**, and **Create Batch**. Label PDFs: pick the first empty slot on a partly-used Avery sheet, confirm, download (picked products are marked printed). The **⚙** button opens **Label Settings**. **Export CSV** downloads every product row. |
+| **Production** | Grouped by product name, same shape as Delivery Batches. The overview lists every product name with tallies aggregated across every order: Total, Not Made, Made, Delivered, Gift Label printed, Shipping Label printed. Click a row to open that product's detail — one card per ticket showing ticket number, customer (and recipient), and the materials used, each with a **Mark made / Mark not made** toggle. Long materials lists collapse to the first three with a **show all** link. No filters — it's already grouped. |
 | **Materials** | List of supplies with a stock count and a per-unit **cost**. Add / edit any row. |
 | **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — no stock, not part of order/inventory logic. |
 | **Delivery Cost** | Reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
@@ -27,9 +29,11 @@ tab; nothing to sync by hand.
 
 ### URLs
 
-Every view has its own address (React Router, no auth): `/new-order`, `/orders`,
-`/orders/:id` (opens that order's detail), `/products`, `/materials`, `/premade`,
+Every view has its own address (React Router, no auth): `/home`, `/new-order`,
+`/orders`, `/orders/:id` (opens that order's detail), `/products`, `/production`,
+`/production/:name` (one product's tickets), `/materials`, `/premade`,
 `/delivery-cost`, `/batches`, `/batches/:id` (a single batch), `/financials`.
+`/` redirects to `/home`.
 Refresh and browser back/forward work. Express serves `index.html` for any
 non-`/api` path so deep links resolve.
 

@@ -1341,3 +1341,34 @@ td.right button {
     gap: 6px;
   }
 }
+
+/* --- Home hub --- */
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.hub-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 16px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+.hub-card:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.hub-ico {
+  font-size: 22px;
+  flex: 0 0 auto;
+}
+.hub-label {
+  font-size: 14px;
+}
