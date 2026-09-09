@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import { buildMapsRouteUrl } from '../util';
+import { buildMapsRouteUrl, copyText } from '../util';
 import BatchChip from './BatchChip';
 import ShareButton from './ShareButton';
 
@@ -20,6 +20,7 @@ export default function BatchDetail({ id, onBack, onChanged }) {
   const [dragId, setDragId] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [touchDragging, setTouchDragging] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
 
   const listRef = useRef(null);
   const dragIdRef = useRef(null);
@@ -237,6 +238,12 @@ export default function BatchDetail({ id, onBack, onChanged }) {
     }
   };
 
+  const copyAddr = async (p) => {
+    await copyText(p.address);
+    setCopiedId(p.id);
+    setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 1300);
+  };
+
   const saveName = async () => {
     if (!nameDraft.trim()) return;
     try {
@@ -328,7 +335,9 @@ export default function BatchDetail({ id, onBack, onChanged }) {
           )}
 
           <div className="batch-list" ref={listRef}>
+           <div className="batch-track">
             {batch.products.map((p, idx) => {
+              const hasAddr = p.fulfillment !== 'Pickup' && !!p.address;
               const addr =
                 p.fulfillment === 'Pickup'
                   ? 'Pickup — no address'
@@ -379,9 +388,27 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                     </button>
 
                     <div className="batch-cols">
-                      <span className="br-addr" title={addr}>
-                        <strong>{addr}</strong>
-                      </span>
+                      {hasAddr ? (
+                        <button
+                          type="button"
+                          className="br-addr copy-addr"
+                          title="Tap to copy address"
+                          onClick={() => copyAddr(p)}
+                        >
+                          <strong>{addr}</strong>
+                          <span
+                            className={
+                              'copy-ic' + (copiedId === p.id ? ' copied' : '')
+                            }
+                          >
+                            {copiedId === p.id ? '✓' : '⧉'}
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="br-addr" title={addr}>
+                          <strong>{addr}</strong>
+                        </span>
+                      )}
                       <span className="br-name" title={p.name}>
                         {p.name}
                       </span>
@@ -415,6 +442,7 @@ export default function BatchDetail({ id, onBack, onChanged }) {
             {showDropLine(batch.products.length) && (
               <div className="drop-line" />
             )}
+           </div>
           </div>
         </>
       )}

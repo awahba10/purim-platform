@@ -173,3 +173,33 @@ export function downloadCSV(filename, csv) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// Copy text to the clipboard, with fallbacks for older / non-secure contexts.
+export async function copyText(text) {
+  const value = text == null ? '' : String(text);
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (ok) return true;
+  } catch {
+    /* fall through */
+  }
+  window.prompt('Copy:', value);
+  return false;
+}

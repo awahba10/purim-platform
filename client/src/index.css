@@ -1024,17 +1024,24 @@ td.right button {
 }
 
 /* --- Delivery batches --- */
+/* .batch-list is a plain horizontal-scroll viewport; .batch-track inside it is
+   sized to its content so the whole set of rows scrolls sideways as one unit
+   (reliable even on iOS Safari, unlike max-content on a flex item). */
 .batch-list {
   list-style: none;
   margin: 12px 0 0;
   padding: 0 2px 4px;
+  overflow-x: auto;
+}
+.batch-track {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow-x: auto;
+  width: max-content;
+  min-width: 100%;
 }
-/* One product = one horizontal line. The row is exactly as wide as its content
-   (min the list width); if that's wider than the panel the list scrolls. */
+/* One product = one horizontal line, filling the track (so all rows are the
+   same width and their columns line up). */
 .batch-row {
   position: relative;
   display: flex;
@@ -1044,8 +1051,7 @@ td.right button {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 8px 14px;
-  min-width: 100%;
-  width: max-content;
+  width: 100%;
   font-size: 14px;
   user-select: none;
 }
@@ -1107,6 +1113,38 @@ td.right button {
 }
 .br-addr {
   flex: 0 0 190px;
+}
+/* Address is a tap-to-copy button but still reads as the bold address line. */
+.copy-addr {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.copy-addr strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.copy-ic {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+.copy-addr:hover .copy-ic {
+  color: var(--brand);
+}
+.copy-ic.copied {
+  color: var(--ok);
+  font-weight: 700;
 }
 .br-name {
   flex: 0 0 180px;
