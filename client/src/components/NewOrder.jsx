@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import {
   money,
@@ -10,7 +11,8 @@ import {
 } from '../util';
 import ProductFields from './ProductFields';
 
-export default function NewOrder({ onCreated }) {
+export default function NewOrder() {
+  const navigate = useNavigate();
   const [materials, setMaterials] = useState([]);
   const [presets, setPresets] = useState([]);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
@@ -76,7 +78,7 @@ export default function NewOrder({ onCreated }) {
       });
       setCustomer({ customer_name: '', phone: '', contact_method: '' });
       setProducts([newProductDraft()]);
-      if (onCreated) onCreated(order);
+      navigate(`/orders/${order.id}`);
     } catch (err) {
       setError(err.message);
     } finally {

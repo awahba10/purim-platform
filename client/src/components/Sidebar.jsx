@@ -1,28 +1,19 @@
-const ICONS = {
-  'New Order': '📝',
-  'All Orders': '📋',
-  Materials: '📦',
-  'Premade Products': '⭐',
-  'Delivery Cost': '🚚',
-  'Delivery Batches': '🗺️',
-  Products: '🎁',
-  Financials: '💰',
-};
+import { NavLink } from 'react-router-dom';
 
-export default function Sidebar({ tabs, active, onSelect }) {
+export default function Sidebar({ nav }) {
   return (
     <nav className="sidebar">
       <div className="brand">🌸 Purim Platform</div>
       <ul>
-        {tabs.map((t) => (
-          <li key={t}>
-            <button
-              className={t === active ? 'active' : ''}
-              onClick={() => onSelect(t)}
+        {nav.map((t) => (
+          <li key={t.path}>
+            <NavLink
+              to={t.path}
+              className={({ isActive }) => (isActive ? 'active' : '')}
             >
-              <span className="ico">{ICONS[t]}</span>
-              {t}
-            </button>
+              <span className="ico">{t.icon}</span>
+              {t.label}
+            </NavLink>
           </li>
         ))}
       </ul>

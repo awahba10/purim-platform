@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { buildMapsRouteUrl } from '../util';
 import BatchChip from './BatchChip';
+import ShareButton from './ShareButton';
 
 export default function BatchDetail({ id, onBack, onChanged }) {
   const [batch, setBatch] = useState(null);
@@ -164,18 +165,24 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                 </button>
               </h1>
             )}
-            <button
-              className="primary"
-              disabled={!routeUrl}
-              onClick={() => routeUrl && window.open(routeUrl, '_blank', 'noopener')}
-              title={
-                routeUrl
-                  ? 'Open every stop in Google Maps, in this order'
-                  : 'No delivery addresses in this batch'
-              }
-            >
-              Open Route in Maps
-            </button>
+            <span className="ph-actions">
+              <ShareButton
+                path={`/batches/${id}`}
+                title={`Delivery batch: ${batch.name}`}
+              />
+              <button
+                className="primary"
+                disabled={!routeUrl}
+                onClick={() => routeUrl && window.open(routeUrl, '_blank', 'noopener')}
+                title={
+                  routeUrl
+                    ? 'Open every stop in Google Maps, in this order'
+                    : 'No delivery addresses in this batch'
+                }
+              >
+                Open Route in Maps
+              </button>
+            </span>
           </div>
 
           <p className="subtle">

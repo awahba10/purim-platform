@@ -12,8 +12,16 @@ Eight tabs down the left side:
 | **Materials** | List of supplies with a stock count and a per-unit **cost**. Add / edit any row. |
 | **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — no stock, not part of order/inventory logic. |
 | **Delivery Cost** | Reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
-| **Delivery Batches** | Group products into a delivery run. The overview lists every batch. Inside a batch, each product is a one-line card: ▲ ▼ move / drag, position number, Delivered toggle, **address (bold)**, product name, ticket, delivery instructions ("No instructions" if none), then a batch chip (reassign) and an ✕ to drop it from the batch. Materials aren't shown here. **Open Route in Maps** builds one Google Maps multi-stop directions link with every address in the current order. |
+| **Delivery Batches** | Group products into a delivery run. The overview lists every batch (each row has a **Share** button). Inside a batch, each product is a one-line card: ▲ ▼ move / drag, position number, Delivered toggle, **address (bold)**, product name, ticket, delivery instructions ("No instructions" if none), then a batch chip (reassign) and an ✕ to drop it from the batch. Materials aren't shown here. **Open Route in Maps** builds one Google Maps multi-stop directions link with every address in the current order; **Share** sends the batch's link (native share sheet on mobile, copy-to-clipboard on desktop). |
 | **Financials** | Auto-updating dashboard: total orders, total products sold, **total delivery income**, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
+
+### URLs
+
+Every view has its own address (React Router, no auth): `/new-order`, `/orders`,
+`/orders/:id` (opens that order's detail), `/products`, `/materials`, `/premade`,
+`/delivery-cost`, `/batches`, `/batches/:id` (a single batch), `/financials`.
+Refresh and browser back/forward work. Express serves `index.html` for any
+non-`/api` path so deep links resolve.
 
 ### Inventory logic
 

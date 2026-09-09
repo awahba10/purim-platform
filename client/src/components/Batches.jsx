@@ -1,26 +1,31 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import BatchDetail from './BatchDetail';
+import ShareButton from './ShareButton';
 
 export default function Batches() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const batchId = /^\d+$/.test(id || '') ? Number(id) : null;
   const [batches, setBatches] = useState([]);
-  const [openId, setOpenId] = useState(null);
   const [error, setError] = useState('');
 
   const load = () =>
     api.get('/batches').then(setBatches).catch((e) => setError(e.message));
 
+  // Refresh the list whenever we're on the list route (including returning to it
+  // from a batch detail page, since this component stays mounted for both).
   useEffect(() => {
-    load();
-  }, []);
+    if (batchId == null) load();
+  }, [batchId]);
 
   const create = async () => {
     const name = window.prompt('Name for the new batch (e.g. "Tuesday route"):');
     if (!name || !name.trim()) return;
     try {
       const b = await api.post('/batches', { name: name.trim() });
-      await load();
-      setOpenId(b.id);
+      navigate(`/batches/${b.id}`);
     } catch (e) {
       setError(e.message);
     }
@@ -41,14 +46,11 @@ export default function Batches() {
     }
   };
 
-  if (openId != null) {
+  if (batchId != null) {
     return (
       <BatchDetail
-        id={openId}
-        onBack={() => {
-          setOpenId(null);
-          load();
-        }}
+        id={batchId}
+        onBack={() => navigate('/batches')}
         onChanged={load}
       />
     );
@@ -81,21 +83,19 @@ export default function Batches() {
           </thead>
           <tbody>
             {batches.map((b) => (
-              <tr key={b.id} onClick={() => setOpenId(b.id)}>
+              <tr key={b.id} onClick={() => navigate(`/batches/${b.id}`)}>
                 <td>{b.name}</td>
                 <td>{b.product_count}</td>
                 <td>
                   {b.delivered_count} / {b.product_count}
                 </td>
                 <td>{new Date(b.created_at).toLocaleDateString()}</td>
-                <td className="right">
-                  <button
-                    className="danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(b);
-                    }}
-                  >
+                <td className="right" onClick={(e) => e.stopPropagation()}>
+                  <ShareButton
+                    path={`/batches/${b.id}`}
+                    title={`Delivery batch: ${b.name}`}
+                  />
+                  <button className="danger" onClick={() => remove(b)}>
                     Delete
                   </button>
                 </td>

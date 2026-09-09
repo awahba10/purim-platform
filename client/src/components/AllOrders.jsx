@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { money, toCSV, downloadCSV } from '../util';
 import OrderDetail from './OrderDetail';
@@ -42,10 +43,12 @@ function statusClass(status) {
 }
 
 export default function AllOrders() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const selectedId = /^\d+$/.test(id || '') ? Number(id) : null;
   const [orders, setOrders] = useState([]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
-  const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState('');
 
   const load = () =>
@@ -129,7 +132,7 @@ export default function AllOrders() {
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.id} onClick={() => setSelectedId(o.id)}>
+              <tr key={o.id} onClick={() => navigate(`/orders/${o.id}`)}>
                 <td>{o.ticket_number}</td>
                 <td>{o.customer_name}</td>
                 <td>{o.phone || '—'}</td>
@@ -180,7 +183,7 @@ export default function AllOrders() {
       {selectedId && (
         <OrderDetail
           id={selectedId}
-          onClose={() => setSelectedId(null)}
+          onClose={() => navigate('/orders')}
           onChanged={load}
         />
       )}
