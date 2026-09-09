@@ -1023,15 +1023,20 @@ td.right button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-x: auto;
 }
+/* One product = one horizontal line. */
 .batch-row {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 12px;
+  min-width: 100%;
+  width: max-content;
+  font-size: 14px;
 }
 .batch-row.dragging {
   opacity: 0.5;
@@ -1039,7 +1044,6 @@ td.right button {
 }
 .batch-row > .made-toggle {
   flex-shrink: 0;
-  margin-top: 1px;
 }
 .batch-move {
   display: flex;
@@ -1048,47 +1052,47 @@ td.right button {
   flex-shrink: 0;
 }
 .batch-move button {
-  padding: 1px 6px;
-  font-size: 11px;
-  line-height: 1.3;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 1.35;
   border-radius: 5px;
 }
 .batch-num {
   font-weight: 700;
   color: var(--muted);
-  min-width: 18px;
+  min-width: 16px;
   text-align: right;
-  padding-top: 2px;
+  flex-shrink: 0;
 }
-.batch-body {
-  flex: 1;
-  min-width: 0;
+.br-addr,
+.br-name,
+.br-instr {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 40px;
 }
-.batch-title {
-  font-size: 14px;
+.br-addr {
+  max-width: 280px;
+}
+.br-name {
+  max-width: 220px;
+}
+.br-instr {
+  max-width: 260px;
+}
+.br-ticket {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .batch-actions {
+  margin-left: auto;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-end;
-}
-.batch-actions select {
-  font-size: 12px;
-  padding: 3px 6px;
-  max-width: 150px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .batch-actions .danger {
   padding: 3px 9px;
-}
-
-@media (max-width: 800px) {
-  .batch-row {
-    flex-wrap: wrap;
-  }
-  .batch-actions {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-  }
 }

@@ -228,23 +228,28 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                   {p.is_delivered ? 'Delivered' : 'Not delivered'}
                 </button>
 
-                <div className="batch-body">
-                  <div className="batch-title">
-                    <strong>
-                      {p.fulfillment === 'Pickup'
-                        ? 'Pickup — no address'
-                        : p.address || 'No address'}
-                    </strong>
-                    {p.recipient_name ? (
-                      <span className="subtle"> • {p.recipient_name}</span>
-                    ) : null}
-                  </div>
-                  <div>{p.name}</div>
-                  <div className="subtle">{p.ticket_number}</div>
-                  {p.delivery_instructions ? (
-                    <div className="subtle">{p.delivery_instructions}</div>
-                  ) : null}
-                </div>
+                {(() => {
+                  const addr =
+                    p.fulfillment === 'Pickup'
+                      ? 'Pickup — no address'
+                      : p.address || 'No address';
+                  const instr =
+                    (p.delivery_instructions || '').trim() || 'No instructions';
+                  return (
+                    <>
+                      <span className="br-addr" title={addr}>
+                        <strong>{addr}</strong>
+                      </span>
+                      <span className="br-name" title={p.name}>
+                        {p.name}
+                      </span>
+                      <span className="br-ticket subtle">{p.ticket_number}</span>
+                      <span className="br-instr subtle" title={instr}>
+                        {instr}
+                      </span>
+                    </>
+                  );
+                })()}
 
                 <div className="batch-actions">
                   <BatchChip

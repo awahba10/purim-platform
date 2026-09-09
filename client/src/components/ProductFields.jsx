@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { money, round2, suggestedCostOf, presetToDraftPatch, DELIVERY_QUICK } from '../util';
 import MaterialPicker from './MaterialPicker';
+import PresetChip from './PresetChip';
 
 function Addon({ label, hint, on, onToggle, children }) {
   return (
@@ -34,11 +35,6 @@ export default function ProductFields({
   const set = (patch) => onChange({ ...value, ...patch });
   const suggested = suggestedCostOf(value.materials, catalog);
   const isPickup = value.fulfillment === 'Pickup';
-
-  const applyPreset = (id) => {
-    const preset = (presets || []).find((p) => String(p.id) === String(id));
-    if (preset) onChange({ ...value, ...presetToDraftPatch(preset) });
-  };
 
   const setMaterials = (materials) => {
     const next = { ...value, materials };
@@ -82,23 +78,15 @@ export default function ProductFields({
         <div className="pf-section-title">1 · Product Details</div>
 
         {presets && presets.length > 0 && (
-          <label>
-            Start from a premade product
-            <select
-              value=""
-              onChange={(e) => {
-                applyPreset(e.target.value);
-                e.target.value = '';
-              }}
-            >
-              <option value="">— pick a preset to fill this product —</option>
-              {presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({money(p.price)})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div>
+            <div className="fld-label">Start from a premade product</div>
+            <PresetChip
+              presets={presets}
+              onPick={(preset) =>
+                onChange({ ...value, ...presetToDraftPatch(preset) })
+              }
+            />
+          </div>
         )}
 
         <label>
