@@ -12,12 +12,12 @@ import ProductFields from './ProductFields';
 import LabelExport from './LabelExport';
 import LabelSettings from './LabelSettings';
 import CreateBatchModal from './CreateBatchModal';
+import BatchChip from './BatchChip';
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
   { key: 'customer_name', label: 'Customer' },
   { key: 'name', label: 'Product' },
-  { key: 'batch_name', label: 'Batch' },
   { key: 'is_made', label: 'Made' },
   { key: 'fulfillment', label: 'Type' },
   { key: 'delivery_location', label: 'Location' },
@@ -203,13 +203,26 @@ export default function Products() {
     await load();
   };
 
-  const changeBatch = async (p, val) => {
+  const setProductBatch = async (p, batchId) => {
     setBusy(true);
     setError('');
     try {
-      await api.patch(`/products/${p.id}`, {
-        batch_id: val === '' ? null : Number(val),
-      });
+      await api.patch(`/products/${p.id}`, { batch_id: batchId });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createBatchFor = async (p) => {
+    const name = window.prompt('Name for the new batch:');
+    if (!name || !name.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.post('/batches', { name: name.trim(), product_ids: [p.id] });
       load();
     } catch (e) {
       setError(e.message);
@@ -351,6 +364,7 @@ export default function Products() {
                 </th>
               ))}
               <th>Labels</th>
+              <th>Batch</th>
               <th>Materials</th>
               <th className="right">Actions</th>
             </tr>
@@ -371,21 +385,6 @@ export default function Products() {
                 <td>{p.ticket_number}</td>
                 <td>{p.customer_name}</td>
                 <td>{p.name}</td>
-                <td onClick={(e) => e.stopPropagation()}>
-                  <select
-                    className="batch-select"
-                    value={p.batch_id ?? ''}
-                    disabled={busy}
-                    onChange={(e) => changeBatch(p, e.target.value)}
-                  >
-                    <option value="">— none —</option>
-                    {batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <button
                     className={'made-toggle ' + (p.is_made ? 'on' : 'off')}
@@ -431,6 +430,17 @@ export default function Products() {
                     </button>
                   </span>
                 </td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <BatchChip
+                    value={p.batch_id}
+                    currentName={p.batch_name}
+                    batches={batches}
+                    disabled={busy}
+                    onAssign={(bid) => setProductBatch(p, bid)}
+                    onCreateAssign={() => createBatchFor(p)}
+                    onRemove={() => setProductBatch(p, null)}
+                  />
+                </td>
                 <td className="subtle">
                   {p.materials.length
                     ? p.materials
@@ -447,7 +457,7 @@ export default function Products() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 3} className="subtle">
+                <td colSpan={COLUMNS.length + 4} className="subtle">
                   No products yet — create an order.
                 </td>
               </tr>

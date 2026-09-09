@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { buildMapsRouteUrl } from '../util';
+import BatchChip from './BatchChip';
 
 export default function BatchDetail({ id, onBack, onChanged }) {
   const [batch, setBatch] = useState(null);
@@ -93,9 +94,21 @@ export default function BatchDetail({ id, onBack, onChanged }) {
   const moveToBatch = async (p, targetId) => {
     setBusy(true);
     try {
-      await api.patch(`/products/${p.id}`, {
-        batch_id: targetId === '' ? null : Number(targetId),
-      });
+      await api.patch(`/products/${p.id}`, { batch_id: targetId });
+      bubble();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createBatchFor = async (p) => {
+    const name = window.prompt('Name for the new batch:');
+    if (!name || !name.trim()) return;
+    setBusy(true);
+    try {
+      await api.post('/batches', { name: name.trim(), product_ids: [p.id] });
       bubble();
     } catch (e) {
       setError(e.message);
@@ -204,50 +217,45 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                     ▼
                   </button>
                 </span>
+
                 <span className="batch-num">{idx + 1}</span>
+
+                <button
+                  className={'made-toggle ' + (p.is_delivered ? 'on' : 'off')}
+                  disabled={busy}
+                  onClick={() => toggleDelivered(p)}
+                >
+                  {p.is_delivered ? 'Delivered' : 'Not delivered'}
+                </button>
+
                 <div className="batch-body">
                   <div className="batch-title">
-                    <strong>{p.name}</strong>
-                    <span className="subtle"> · {p.ticket_number}</span>
+                    <strong>
+                      {p.fulfillment === 'Pickup'
+                        ? 'Pickup — no address'
+                        : p.address || 'No address'}
+                    </strong>
+                    {p.recipient_name ? (
+                      <span className="subtle"> • {p.recipient_name}</span>
+                    ) : null}
                   </div>
-                  <div className="subtle">
-                    {p.fulfillment === 'Pickup'
-                      ? 'Pickup — no address'
-                      : p.address || 'No address'}
-                  </div>
-                  <div className="subtle">
-                    {p.customer_name}
-                    {p.materials.length
-                      ? ' · ' +
-                        p.materials
-                          .map((m) => `${m.material_name}×${m.quantity_used}`)
-                          .join(', ')
-                      : ''}
-                  </div>
+                  <div>{p.name}</div>
+                  <div className="subtle">{p.ticket_number}</div>
+                  {p.delivery_instructions ? (
+                    <div className="subtle">{p.delivery_instructions}</div>
+                  ) : null}
                 </div>
+
                 <div className="batch-actions">
-                  <button
-                    className={
-                      'made-toggle ' + (p.is_delivered ? 'on' : 'off')
-                    }
+                  <BatchChip
+                    value={p.batch_id}
+                    currentName={p.batch_name}
+                    batches={batches}
                     disabled={busy}
-                    onClick={() => toggleDelivered(p)}
-                  >
-                    {p.is_delivered ? 'Delivered' : 'Not delivered'}
-                  </button>
-                  <select
-                    value={id}
-                    disabled={busy}
-                    onChange={(e) => moveToBatch(p, e.target.value)}
-                    title="Move to another batch"
-                  >
-                    {batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.id === Number(id) ? `This batch` : `→ ${b.name}`}
-                      </option>
-                    ))}
-                    <option value="">→ Remove from batch</option>
-                  </select>
+                    onAssign={(bid) => moveToBatch(p, bid)}
+                    onCreateAssign={() => createBatchFor(p)}
+                    onRemove={() => removeFromBatch(p)}
+                  />
                   <button className="danger" onClick={() => removeFromBatch(p)}>
                     ✕
                   </button>

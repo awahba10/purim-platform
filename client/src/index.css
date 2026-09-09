@@ -278,12 +278,76 @@ td.right button {
   font-weight: 600;
 }
 
-.made-toggle {
+.made-toggle,
+.chip-toggle {
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+/* Batch-assignment chip: neutral when unassigned, accented when assigned. */
+.chip-toggle.unset {
+  background: #eef0f2;
+  color: var(--muted);
+  border-color: #e2e5e8;
+}
+.chip-toggle.set {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: var(--brand-soft);
+}
+.chip-toggle:hover {
+  border-color: var(--brand);
+}
+
+/* Popup shown by the batch chip. Fixed-positioned so table overflow can't clip it. */
+.chip-menu {
+  z-index: 200;
+  min-width: 200px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 18, 25, 0.18);
+  padding: 4px;
+}
+.cm-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.cm-item:hover {
+  background: #f3f4f6;
+}
+.cm-item.current {
+  color: var(--brand);
+  font-weight: 600;
+}
+.cm-item.new {
+  color: var(--brand);
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  margin-top: 2px;
+}
+.cm-item.danger {
+  color: var(--danger);
+}
+.cm-empty {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .made-toggle.on {
   background: var(--ok-bg);
   color: var(--ok);
@@ -973,10 +1037,15 @@ td.right button {
   opacity: 0.5;
   border-style: dashed;
 }
+.batch-row > .made-toggle {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
 .batch-move {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex-shrink: 0;
 }
 .batch-move button {
   padding: 1px 6px;

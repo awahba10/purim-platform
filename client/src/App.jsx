@@ -12,11 +12,11 @@ import Financials from './components/Financials';
 const TABS = [
   'New Order',
   'All Orders',
+  'Products',
   'Materials',
   'Premade Products',
   'Delivery Cost',
   'Delivery Batches',
-  'Products',
   'Financials',
 ];
 
