@@ -60,7 +60,7 @@ export default function ProductFields({
           <strong>{title || 'Product'}</strong>
           <span className="pf-head-actions">
             {onDuplicate && (
-              <button type="button" className="linkbtn" onClick={onDuplicate}>
+              <button type="button" className="btn-sm" onClick={onDuplicate}>
                 Duplicate
               </button>
             )}

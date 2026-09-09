@@ -1036,6 +1036,7 @@ td.right button {
 /* One product = one horizontal line. The row is exactly as wide as its content
    (min the list width); if that's wider than the panel the list scrolls. */
 .batch-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1046,10 +1047,24 @@ td.right button {
   min-width: 100%;
   width: max-content;
   font-size: 14px;
+  user-select: none;
 }
 .batch-row.dragging {
   opacity: 0.5;
   border-style: dashed;
+}
+.batch-row.lifted {
+  opacity: 1;
+  border-style: solid;
+  box-shadow: 0 10px 26px rgba(15, 18, 25, 0.22);
+  z-index: 5;
+}
+/* Where the dragged row will land, shown live while dragging. */
+.drop-line {
+  height: 3px;
+  background: var(--brand);
+  border-radius: 2px;
+  margin: -6px 4px -5px;
 }
 .batch-row > .made-toggle {
   flex: 0 0 112px;
@@ -1074,13 +1089,13 @@ td.right button {
   flex: 0 0 22px;
   text-align: right;
 }
-/* The fixed-width column block; grows to absorb slack so the actions pin right. */
+/* The fixed-width column block. Grows to absorb slack so the actions pin right,
+   but never shrinks (shrinking is what let the columns overlap on mobile). */
 .batch-cols {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 0 auto;
 }
 .br-addr,
 .br-name,
@@ -1111,4 +1126,30 @@ td.right button {
 }
 .batch-actions .danger {
   padding: 3px 10px;
+}
+
+/* Mobile: keep the same fixed column widths (so rows still align), just tighten
+   the spacing between/around them so nothing overlaps. */
+@media (max-width: 800px) {
+  .batch-row {
+    gap: 7px;
+    padding: 6px 8px;
+  }
+  .batch-cols {
+    gap: 7px;
+  }
+  .batch-actions {
+    gap: 6px;
+  }
+  .batch-move button {
+    padding: 0 5px;
+  }
+}
+
+/* Small standard button (matches the app's other buttons/chips). */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
 }
