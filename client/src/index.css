@@ -1046,11 +1046,11 @@ td.right button {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   width: 100%;
   font-size: 14px;
   user-select: none;
@@ -1073,8 +1073,9 @@ td.right button {
   margin: -6px 4px -5px;
 }
 .batch-row > .made-toggle {
-  flex: 0 0 112px;
-  max-width: 112px;
+  flex: 0 0 120px;
+  min-width: 120px;
+  max-width: 120px;
   text-align: center;
 }
 .batch-move {
@@ -1092,15 +1093,17 @@ td.right button {
 .batch-num {
   font-weight: 700;
   color: var(--muted);
-  flex: 0 0 22px;
+  flex: 0 0 26px;
+  min-width: 26px;
   text-align: right;
 }
 /* The fixed-width column block. Grows to absorb slack so the actions pin right,
-   but never shrinks (shrinking is what let the columns overlap on mobile). */
+   but never shrinks — every column keeps its own space on every batch, and the
+   row just scrolls sideways when it doesn't fit. */
 .batch-cols {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   flex: 1 0 auto;
 }
 .br-addr,
@@ -1112,7 +1115,8 @@ td.right button {
   text-overflow: ellipsis;
 }
 .br-addr {
-  flex: 0 0 190px;
+  flex: 0 0 240px;
+  min-width: 240px;
 }
 /* Address is a tap-to-copy button but still reads as the bold address line. */
 .copy-addr {
@@ -1126,7 +1130,6 @@ td.right button {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-width: 0;
 }
 .copy-addr strong {
   overflow: hidden;
@@ -1147,70 +1150,29 @@ td.right button {
   font-weight: 700;
 }
 .br-name {
-  flex: 0 0 180px;
+  flex: 0 0 210px;
+  min-width: 210px;
 }
 .br-ticket {
-  flex: 0 0 74px;
+  flex: 0 0 92px;
+  min-width: 92px;
 }
 .br-instr {
-  flex: 0 0 210px;
+  flex: 0 0 240px;
+  min-width: 240px;
 }
 .batch-actions {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex: 0 0 auto;
+}
+.batch-actions .chip-toggle {
+  max-width: 200px;
 }
 .batch-actions .danger {
   padding: 3px 10px;
-}
-
-/* Tablet/small: tighten the spacing around the columns. */
-@media (max-width: 800px) {
-  .batch-row {
-    gap: 7px;
-    padding: 6px 8px;
-  }
-  .batch-cols {
-    gap: 7px;
-  }
-  .batch-actions {
-    gap: 6px;
-  }
-  .batch-move button {
-    padding: 0 5px;
-  }
-}
-
-/* Phones: also trim the column widths a little (still equal across rows, so they
-   stay aligned) so more of each row fits per swipe. Text size is unchanged. */
-@media (max-width: 560px) {
-  .batch-row {
-    gap: 6px;
-  }
-  .batch-cols {
-    gap: 6px;
-  }
-  .br-addr {
-    flex-basis: 172px;
-  }
-  .br-name {
-    flex-basis: 150px;
-  }
-  .br-ticket {
-    flex-basis: 64px;
-  }
-  .br-instr {
-    flex-basis: 160px;
-  }
-  .batch-row > .made-toggle {
-    flex-basis: 104px;
-    max-width: 104px;
-  }
-  .batch-actions .chip-toggle {
-    max-width: 128px;
-  }
 }
 
 /* Small standard button (matches the app's other buttons/chips). */
