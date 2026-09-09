@@ -9,7 +9,7 @@ import {
 } from '../util';
 import ProductFields from './ProductFields';
 
-const PAYMENT = ['Not Paid', 'Paid'];
+const PAYMENT = ['Paid', 'Partially Paid', 'Not Paid'];
 const PRODUCTION = ['None Made', 'Some Made', 'All Made'];
 const DELIVERY = ['None Delivered', 'Some Delivered', 'All Delivered'];
 

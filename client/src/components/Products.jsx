@@ -7,12 +7,15 @@ import {
   toCSV,
   downloadCSV,
   validateProductDraft,
+  filterItems,
+  distinctSorted,
 } from '../util';
 import ProductFields from './ProductFields';
 import LabelExport from './LabelExport';
 import LabelSettings from './LabelSettings';
 import CreateBatchModal from './CreateBatchModal';
 import BatchChip from './BatchChip';
+import FilterPanel from './FilterPanel';
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
@@ -65,6 +68,7 @@ export default function Products() {
   const [templates, setTemplates] = useState([]);
   const [batches, setBatches] = useState([]);
   const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
   const [editing, setEditing] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
@@ -97,9 +101,67 @@ export default function Products() {
     load();
   }, []);
 
+  const filterCategories = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Product Name',
+        options: distinctSorted(products.map((p) => p.name)).map((n) => ({
+          value: n,
+          label: n,
+        })),
+        match: (p, v) => v.includes(p.name),
+      },
+      {
+        key: 'fulfillment',
+        label: 'Pickup / Delivery',
+        options: [
+          { value: 'Delivery', label: 'Delivery' },
+          { value: 'Pickup', label: 'Pickup' },
+        ],
+        match: (p, v) => v.includes(p.fulfillment),
+      },
+      {
+        key: 'location',
+        label: 'Location',
+        options: distinctSorted([
+          ...deliveryLocations.map((l) => l.name),
+          ...products.map((p) => p.delivery_location),
+        ]).map((n) => ({ value: n, label: n })),
+        match: (p, v) => v.includes(p.delivery_location || ''),
+      },
+      {
+        key: 'giftLabel',
+        label: 'Gift Label',
+        options: [
+          { value: 'made', label: 'Made' },
+          { value: 'not', label: 'Not Made' },
+        ],
+        match: (p, v) => v.includes(p.gift_label_printed ? 'made' : 'not'),
+      },
+      {
+        key: 'shipLabel',
+        label: 'Shipping Label',
+        options: [
+          { value: 'made', label: 'Made' },
+          { value: 'not', label: 'Not Made' },
+        ],
+        match: (p, v) => v.includes(p.shipping_label_printed ? 'made' : 'not'),
+      },
+      {
+        key: 'batch',
+        label: 'Delivery Batch',
+        options: batches.map((b) => ({ value: String(b.id), label: b.name })),
+        match: (p, v) =>
+          v.includes(p.batch_id == null ? '' : String(p.batch_id)),
+      },
+    ],
+    [products, deliveryLocations, batches]
+  );
+
   const rows = useMemo(() => {
+    let list = filterItems(products, filterCategories, filters);
     const needle = query.trim().toLowerCase();
-    let list = products;
     if (needle) {
       list = list.filter((p) =>
         [p.name, p.ticket_number, p.customer_name, p.delivery_location, p.address, p.batch_name].some(
@@ -125,7 +187,7 @@ export default function Products() {
       if (av > bv) return dir === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [products, query, sort]);
+  }, [products, filterCategories, filters, query, sort]);
 
   const toggleSort = (key) =>
     setSort((s) =>
@@ -324,6 +386,12 @@ export default function Products() {
         record the order shows. Use <strong>Select</strong> to pick rows for bulk
         actions (click a row, shift-click another to select the range).
       </p>
+
+      <FilterPanel
+        categories={filterCategories}
+        state={filters}
+        onChange={setFilters}
+      />
 
       <div className="row-between">
         <input

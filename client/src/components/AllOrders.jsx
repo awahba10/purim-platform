@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
-import { money, toCSV, downloadCSV } from '../util';
+import {
+  money,
+  toCSV,
+  downloadCSV,
+  filterItems,
+  distinctSorted,
+  classifyContact,
+} from '../util';
 import OrderDetail from './OrderDetail';
+import FilterPanel from './FilterPanel';
+
+const PRODUCTION_MAP = {
+  'Not Made': 'None Made',
+  'Some Made': 'Some Made',
+  Made: 'All Made',
+};
+const DELIVERY_MAP = {
+  'Not Delivered': 'None Delivered',
+  'Some Delivered': 'Some Delivered',
+  Delivered: 'All Delivered',
+};
 
 const CSV_COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
@@ -41,6 +60,11 @@ function statusClass(status) {
   if (status === 'Some Made' || status === 'Some Delivered') return 'info';
   return 'warn';
 }
+function payClass(status) {
+  if (status === 'Paid') return 'ok';
+  if (status === 'Partially Paid') return 'mid';
+  return 'warn';
+}
 
 export default function AllOrders() {
   const navigate = useNavigate();
@@ -48,6 +72,7 @@ export default function AllOrders() {
   const selectedId = /^\d+$/.test(id || '') ? Number(id) : null;
   const [orders, setOrders] = useState([]);
   const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
   const [error, setError] = useState('');
 
@@ -58,9 +83,55 @@ export default function AllOrders() {
     load();
   }, []);
 
+  const filterCategories = useMemo(
+    () => [
+      {
+        key: 'contact',
+        label: 'Contact Method',
+        options: distinctSorted(
+          orders.map((o) => classifyContact(o.contact_method))
+        ).map((c) => ({ value: c, label: c })),
+        match: (o, v) => v.includes(classifyContact(o.contact_method)),
+      },
+      {
+        key: 'payment',
+        label: 'Payment Status',
+        options: [
+          { value: 'Paid', label: 'Paid' },
+          { value: 'Partially Paid', label: 'Partially Paid' },
+          { value: 'Not Paid', label: 'Not Paid' },
+        ],
+        match: (o, v) => v.includes(o.payment_status),
+      },
+      {
+        key: 'production',
+        label: 'Production Status',
+        options: [
+          { value: 'Not Made', label: 'Not Made' },
+          { value: 'Some Made', label: 'Some Made' },
+          { value: 'Made', label: 'Made' },
+        ],
+        match: (o, v) =>
+          v.some((x) => PRODUCTION_MAP[x] === o.production_status),
+      },
+      {
+        key: 'delivery',
+        label: 'Delivery Status',
+        options: [
+          { value: 'Not Delivered', label: 'Not Delivered' },
+          { value: 'Some Delivered', label: 'Some Delivered' },
+          { value: 'Delivered', label: 'Delivered' },
+        ],
+        match: (o, v) =>
+          v.some((x) => DELIVERY_MAP[x] === o.delivery_status),
+      },
+    ],
+    [orders]
+  );
+
   const rows = useMemo(() => {
+    let list = filterItems(orders, filterCategories, filters);
     const needle = query.trim().toLowerCase();
-    let list = orders;
     if (needle) {
       list = list.filter((o) =>
         [o.customer_name, o.phone, o.contact_method, o.ticket_number].some((v) =>
@@ -86,7 +157,7 @@ export default function AllOrders() {
       if (av > bv) return dir === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [orders, query, sort]);
+  }, [orders, filterCategories, filters, query, sort]);
 
   const toggleSort = (key) =>
     setSort((s) =>
@@ -110,6 +181,11 @@ export default function AllOrders() {
           Export CSV
         </button>
       </div>
+      <FilterPanel
+        categories={filterCategories}
+        state={filters}
+        onChange={setFilters}
+      />
       <input
         className="search"
         placeholder="Search by customer, phone, contact, or ticket…"
@@ -140,11 +216,7 @@ export default function AllOrders() {
                 <td>{o.product_count}</td>
                 <td>{money(o.total_price)}</td>
                 <td>
-                  <span
-                    className={
-                      'badge ' + (o.payment_status === 'Paid' ? 'ok' : 'warn')
-                    }
-                  >
+                  <span className={'badge ' + payClass(o.payment_status)}>
                     {o.payment_status}
                   </span>
                 </td>

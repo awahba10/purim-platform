@@ -174,6 +174,72 @@ export function downloadCSV(filename, csv) {
   URL.revokeObjectURL(url);
 }
 
+// --- Filtering ---------------------------------------------------------------
+
+// Unique, sorted, non-empty strings.
+export const distinctSorted = (arr) =>
+  [...new Set((arr || []).map((v) => (v == null ? '' : String(v))).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+  );
+
+// items: array. categories: [{ key, match(item, selectedValues[]) }].
+// state: { [key]: string[] }. A category with no selection is ignored; within a
+// category the values are OR'd; across categories they are AND'd.
+export function filterItems(items, categories, state) {
+  const active = (categories || []).filter(
+    (c) => (state[c.key] || []).length > 0
+  );
+  if (!active.length) return items;
+  return items.filter((item) =>
+    active.every((c) => c.match(item, state[c.key]))
+  );
+}
+
+// Bucket a free-text "way of contact" string into a coarse channel.
+export function classifyContact(raw) {
+  const s = (raw || '').toLowerCase().trim();
+  if (!s) return 'None';
+  if (/whats\s*app|\bwa\b/.test(s)) return 'WhatsApp';
+  if (/insta|\big\b|instagram/.test(s) || /^@[a-z0-9._]+$/.test(s)) return 'Instagram';
+  if (/e-?mail/.test(s) || /@[^\s@]+\.[a-z]{2,}/.test(s)) return 'Email';
+  if (/text|sms|imessage|message/.test(s)) return 'Text';
+  if (/phone|call|\btel\b|mobile|cell/.test(s) || /^\+?[\d()\-.\s]{6,}$/.test(s))
+    return 'Phone';
+  return 'Other';
+}
+
+// --- Grouping (Financials breakdowns) --------------------------------------
+
+// Group product rows by keyFn; sum revenue/cost/profit/delivery, count distinct
+// orders and line items. Returns [{ label, count, lineItems, revenue, cost,
+// profit, delivery }].
+export function groupProductRows(list, keyFn) {
+  const map = new Map();
+  for (const p of list) {
+    const k = keyFn(p);
+    let g = map.get(k);
+    if (!g) {
+      g = { label: k, orders: new Set(), lineItems: 0, revenue: 0, cost: 0, profit: 0, delivery: 0 };
+      map.set(k, g);
+    }
+    g.orders.add(p.order_id);
+    g.lineItems += 1;
+    g.revenue += Number(p.price) || 0;
+    g.cost += Number(p.cost) || 0;
+    g.profit += Number(p.profit) || 0;
+    g.delivery += Number(p.delivery_charge) || 0;
+  }
+  return [...map.values()].map((g) => ({
+    label: g.label,
+    count: g.orders.size,
+    lineItems: g.lineItems,
+    revenue: g.revenue,
+    cost: g.cost,
+    profit: g.profit,
+    delivery: g.delivery,
+  }));
+}
+
 // Copy text to the clipboard, with fallbacks for older / non-secure contexts.
 export async function copyText(text) {
   const value = text == null ? '' : String(text);
