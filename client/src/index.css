@@ -1166,8 +1166,7 @@ td.right button {
   padding: 3px 10px;
 }
 
-/* Mobile: keep the same fixed column widths (so rows still align), just tighten
-   the spacing between/around them so nothing overlaps. */
+/* Tablet/small: tighten the spacing around the columns. */
 @media (max-width: 800px) {
   .batch-row {
     gap: 7px;
@@ -1181,6 +1180,36 @@ td.right button {
   }
   .batch-move button {
     padding: 0 5px;
+  }
+}
+
+/* Phones: also trim the column widths a little (still equal across rows, so they
+   stay aligned) so more of each row fits per swipe. Text size is unchanged. */
+@media (max-width: 560px) {
+  .batch-row {
+    gap: 6px;
+  }
+  .batch-cols {
+    gap: 6px;
+  }
+  .br-addr {
+    flex-basis: 172px;
+  }
+  .br-name {
+    flex-basis: 150px;
+  }
+  .br-ticket {
+    flex-basis: 64px;
+  }
+  .br-instr {
+    flex-basis: 160px;
+  }
+  .batch-row > .made-toggle {
+    flex-basis: 104px;
+    max-width: 104px;
+  }
+  .batch-actions .chip-toggle {
+    max-width: 128px;
   }
 }
 
