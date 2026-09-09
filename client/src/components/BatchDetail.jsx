@@ -243,7 +243,7 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                   const instr =
                     (p.delivery_instructions || '').trim() || 'No instructions';
                   return (
-                    <>
+                    <div className="batch-cols">
                       <span className="br-addr" title={addr}>
                         <strong>{addr}</strong>
                       </span>
@@ -254,7 +254,7 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                       <span className="br-instr subtle" title={instr}>
                         {instr}
                       </span>
-                    </>
+                    </div>
                   );
                 })()}
 
