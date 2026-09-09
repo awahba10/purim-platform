@@ -16,6 +16,7 @@ router.get('/', async (req, res, next) => {
       `SELECT o.*,
               COUNT(p.id) AS product_count,
               COUNT(p.id) FILTER (WHERE p.is_made) AS made_count,
+              COUNT(p.id) FILTER (WHERE p.is_delivered) AS delivered_count,
               COALESCE(SUM(p.price), 0) AS total_price,
               COALESCE(SUM(p.cost), 0) AS total_cost
          FROM orders o
@@ -102,11 +103,15 @@ router.patch('/:id', async (req, res, next) => {
       put('contact_method', String(f.contact_method).trim() || null);
     }
     if (f.payment_status !== undefined) put('payment_status', f.payment_status);
-    // Progress: a value sets a manual override; progress_auto:true clears it so
-    // the order follows the value calculated from its products.
-    if (f.progress_auto === true) put('progress_override', null);
-    else if (f.progress_status !== undefined) {
-      put('progress_override', f.progress_status);
+    // Production / Delivery status: a value sets a manual override; *_auto:true
+    // clears it so the order follows the value calculated from its products.
+    if (f.production_auto === true) put('production_override', null);
+    else if (f.production_status !== undefined) {
+      put('production_override', f.production_status);
+    }
+    if (f.delivery_auto === true) put('delivery_override', null);
+    else if (f.delivery_status !== undefined) {
+      put('delivery_override', f.delivery_status);
     }
 
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });

@@ -10,7 +10,41 @@ import {
 import ProductFields from './ProductFields';
 
 const PAYMENT = ['Not Paid', 'Paid'];
-const PROGRESS = ['None Made', 'Some Made', 'All Made', 'Delivered'];
+const PRODUCTION = ['None Made', 'Some Made', 'All Made'];
+const DELIVERY = ['None Delivered', 'Some Delivered', 'All Delivered'];
+
+function StatusGroup({ label, options, value, computed, isAuto, busy, onPick, onAuto }) {
+  return (
+    <div>
+      <div className="subtle">{label}</div>
+      <div className="pill-group">
+        {options.map((s) => (
+          <button
+            key={s}
+            disabled={busy}
+            className={value === s ? 'pill active' : 'pill'}
+            onClick={() => onPick(s)}
+          >
+            {s}
+          </button>
+        ))}
+        <button
+          disabled={busy || isAuto}
+          className={isAuto ? 'pill active' : 'pill'}
+          onClick={onAuto}
+          title="Follow the value calculated from this order's products"
+        >
+          Auto
+        </button>
+      </div>
+      <div className="hint">
+        {isAuto
+          ? `Auto from products: ${value}`
+          : `Manually set · calculated is ${computed}`}
+      </div>
+    </div>
+  );
+}
 
 function Field({ label, children }) {
   return (
@@ -176,34 +210,26 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                   ))}
                 </div>
               </div>
-              <div>
-                <div className="subtle">Progress status</div>
-                <div className="pill-group">
-                  {PROGRESS.map((s) => (
-                    <button
-                      key={s}
-                      disabled={busy}
-                      className={order.progress_status === s ? 'pill active' : 'pill'}
-                      onClick={() => patchOrder({ progress_status: s })}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                  <button
-                    disabled={busy || order.progress_is_auto}
-                    className={order.progress_is_auto ? 'pill active' : 'pill'}
-                    onClick={() => patchOrder({ progress_auto: true })}
-                    title="Follow the value calculated from this order's products"
-                  >
-                    Auto
-                  </button>
-                </div>
-                <div className="hint">
-                  {order.progress_is_auto
-                    ? `Auto from products: ${order.progress_status}`
-                    : `Manually set · calculated is ${order.progress_computed}`}
-                </div>
-              </div>
+              <StatusGroup
+                label="Production status"
+                options={PRODUCTION}
+                value={order.production_status}
+                computed={order.production_computed}
+                isAuto={order.production_is_auto}
+                busy={busy}
+                onPick={(s) => patchOrder({ production_status: s })}
+                onAuto={() => patchOrder({ production_auto: true })}
+              />
+              <StatusGroup
+                label="Delivery status"
+                options={DELIVERY}
+                value={order.delivery_status}
+                computed={order.delivery_computed}
+                isAuto={order.delivery_is_auto}
+                busy={busy}
+                onPick={(s) => patchOrder({ delivery_status: s })}
+                onAuto={() => patchOrder({ delivery_auto: true })}
+              />
             </div>
 
             {!editingOrder ? (
@@ -272,7 +298,13 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                     {p.name}{' '}
                     <span className={'badge ' + (p.is_made ? 'ok' : 'warn')}>
                       {p.is_made ? 'Made' : 'Not made'}
+                    </span>{' '}
+                    <span className={'badge ' + (p.is_delivered ? 'ok' : 'warn')}>
+                      {p.is_delivered ? 'Delivered' : 'Not delivered'}
                     </span>
+                    {p.batch_name && (
+                      <span className="badge info"> {p.batch_name}</span>
+                    )}
                   </strong>
                   <span>{money(p.price)}</span>
                 </div>

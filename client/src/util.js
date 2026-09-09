@@ -150,6 +150,17 @@ export function toCSV(rows, columns) {
   return lines.join('\r\n');
 }
 
+// Build one Google Maps multi-stop directions URL from an ordered list of
+// address strings. First address is the origin, the rest are stops in order.
+export function buildMapsRouteUrl(addresses) {
+  const stops = (addresses || [])
+    .map((a) => (a == null ? '' : String(a).replace(/\s+/g, ' ').trim()))
+    .filter(Boolean);
+  if (!stops.length) return null;
+  const path = stops.map((s) => encodeURIComponent(s)).join('/');
+  return `https://www.google.com/maps/dir/${path}`;
+}
+
 export function downloadCSV(filename, csv) {
   // Prepend a BOM so Excel opens UTF-8 correctly.
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });

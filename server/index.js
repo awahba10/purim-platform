@@ -16,6 +16,7 @@ app.use('/api/materials', require('./routes/materials'));
 app.use('/api/delivery-locations', require('./routes/deliveryLocations'));
 app.use('/api/label-templates', require('./routes/labelTemplates'));
 app.use('/api/presets', require('./routes/presets'));
+app.use('/api/batches', require('./routes/batches'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/financials', require('./routes/financials'));

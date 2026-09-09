@@ -922,3 +922,104 @@ td.right button {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px 12px;
 }
+
+/* --- Products selection mode + action bar --- */
+.grid tbody tr.selectable {
+  cursor: pointer;
+}
+.grid tbody tr.selectable:hover {
+  background: #faf8ff;
+}
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+}
+.action-bar > span {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.batch-select {
+  min-width: 110px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+/* --- Delivery batches --- */
+.batch-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.batch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.batch-row.dragging {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.batch-move {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.batch-move button {
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  border-radius: 5px;
+}
+.batch-num {
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 18px;
+  text-align: right;
+  padding-top: 2px;
+}
+.batch-body {
+  flex: 1;
+  min-width: 0;
+}
+.batch-title {
+  font-size: 14px;
+}
+.batch-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.batch-actions select {
+  font-size: 12px;
+  padding: 3px 6px;
+  max-width: 150px;
+}
+.batch-actions .danger {
+  padding: 3px 9px;
+}
+
+@media (max-width: 800px) {
+  .batch-row {
+    flex-wrap: wrap;
+  }
+  .batch-actions {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+  }
+}

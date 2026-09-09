@@ -4,6 +4,7 @@ const ICONS = {
   Materials: '📦',
   'Premade Products': '⭐',
   'Delivery Cost': '🚚',
+  'Delivery Batches': '🗺️',
   Products: '🎁',
   Financials: '💰',
 };

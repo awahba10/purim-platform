@@ -8,9 +8,11 @@ const {
 } = require('../lib/products');
 
 const SELECT_PRODUCT = `
-  SELECT p.*, o.ticket_number, o.customer_name, o.payment_status
+  SELECT p.*, o.ticket_number, o.customer_name, o.payment_status,
+         b.name AS batch_name
     FROM products p
     JOIN orders o ON o.id = p.order_id
+    LEFT JOIN batches b ON b.id = p.batch_id
 `;
 
 // LIST every product across all orders (one row per product).
@@ -87,6 +89,18 @@ router.patch('/:id', async (req, res, next) => {
     }
     if (f.shipping_label_printed !== undefined) {
       put('shipping_label_printed', Boolean(f.shipping_label_printed));
+    }
+    if (f.is_delivered !== undefined) put('is_delivered', Boolean(f.is_delivered));
+    if (f.batch_id !== undefined) {
+      const target = f.batch_id === null || f.batch_id === '' ? null : Number(f.batch_id);
+      put('batch_id', target);
+      if (target != null) {
+        const { rows: mx } = await client.query(
+          'SELECT COALESCE(MAX(batch_position) + 1, 0) AS pos FROM products WHERE batch_id = $1',
+          [target]
+        );
+        put('batch_position', Number(mx[0].pos));
+      }
     }
     if (sets.length) {
       vals.push(req.params.id);

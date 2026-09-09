@@ -15,6 +15,10 @@ const toProduct = (p) => ({
   price: Number(p.price),
   profit: Number(p.price) - Number(p.cost),
   is_made: Boolean(p.is_made),
+  is_delivered: Boolean(p.is_delivered),
+  batch_id: p.batch_id != null ? Number(p.batch_id) : null,
+  batch_name: p.batch_name || null,
+  batch_position: Number(p.batch_position || 0),
   fulfillment: p.fulfillment === 'Pickup' ? 'Pickup' : 'Delivery',
   delivery_location: p.delivery_location || null,
   delivery_charge: Number(p.delivery_charge || 0),
@@ -25,28 +29,45 @@ const toProduct = (p) => ({
   materials: mapMaterials(p.materials),
 });
 
-function progressComputed(productCount, madeCount) {
-  if (madeCount === 0) return 'None Made';
-  if (productCount > 0 && madeCount === productCount) return 'All Made';
-  return 'Some Made';
+// none / some / all, given a count of "done" out of a total.
+function tri(total, done, labels) {
+  if (done === 0) return labels[0];
+  if (total > 0 && done >= total) return labels[2];
+  return labels[1];
 }
+
+const PRODUCTION = ['None Made', 'Some Made', 'All Made'];
+const DELIVERY = ['None Delivered', 'Some Delivered', 'All Delivered'];
 
 const toOrder = (o) => {
   const productCount = Number(o.product_count || 0);
   const madeCount = Number(o.made_count || 0);
-  const computed = progressComputed(productCount, madeCount);
-  const override = o.progress_override != null ? o.progress_override : null;
+  const deliveredCount = Number(o.delivered_count || 0);
+
+  const prodComputed = tri(productCount, madeCount, PRODUCTION);
+  const delivComputed = tri(productCount, deliveredCount, DELIVERY);
+  const prodOverride = o.production_override != null ? o.production_override : null;
+  const delivOverride = o.delivery_override != null ? o.delivery_override : null;
+
   return {
     ...o,
     product_count: productCount,
     made_count: madeCount,
+    delivered_count: deliveredCount,
     total_price: Number(o.total_price || 0),
     total_cost: Number(o.total_cost || 0),
     total_profit: Number(o.total_price || 0) - Number(o.total_cost || 0),
-    progress_computed: computed,
-    progress_override: override,
-    progress_status: override != null ? override : computed,
-    progress_is_auto: override == null,
+
+    production_computed: prodComputed,
+    production_override: prodOverride,
+    production_status: prodOverride != null ? prodOverride : prodComputed,
+    production_is_auto: prodOverride == null,
+
+    delivery_computed: delivComputed,
+    delivery_override: delivOverride,
+    delivery_status: delivOverride != null ? delivOverride : delivComputed,
+    delivery_is_auto: delivOverride == null,
+
     products: (o.products || []).map(toProduct),
   };
 };
@@ -201,6 +222,7 @@ async function fetchOrderFull(db, orderId) {
     `SELECT o.*,
             (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id) AS product_count,
             (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id AND p.is_made) AS made_count,
+            (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id AND p.is_delivered) AS delivered_count,
             (SELECT COALESCE(SUM(p.price), 0) FROM products p WHERE p.order_id = o.id) AS total_price,
             (SELECT COALESCE(SUM(p.cost), 0) FROM products p WHERE p.order_id = o.id) AS total_cost
        FROM orders o WHERE o.id = $1`,
@@ -208,7 +230,11 @@ async function fetchOrderFull(db, orderId) {
   );
   if (!orders.length) return null;
   const { rows: products } = await db.query(
-    'SELECT * FROM products WHERE order_id = $1 ORDER BY id',
+    `SELECT p.*, b.name AS batch_name
+       FROM products p
+       LEFT JOIN batches b ON b.id = p.batch_id
+      WHERE p.order_id = $1
+      ORDER BY p.id`,
     [orderId]
   );
   const withMats = await withMaterials(db, products);

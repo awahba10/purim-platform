@@ -2,16 +2,17 @@
 
 A simple web app for managing holiday tray orders for a community giveaway.
 
-Seven tabs down the left side:
+Eight tabs down the left side:
 
 | Tab | What it does |
 | --- | --- |
 | **New Order** | Customer info (name, phone, way of contact) plus one or more products built on the spot. Each product entry is grouped into three blocks: **1 · Product Details** (preset picker, name, materials with quantities, auto-suggested overridable cost, price), **2 · Fulfillment** (Pickup / Delivery toggle; Delivery requires an address, a delivery location — from the Delivery Cost list or a new one typed in — optional delivery instructions, and a delivery charge from quick buttons $0/$5/$10/$15/Other; Pickup skips all of it), and **3 · Optional Add-ons** (recipient name, gift message, maker notes — each behind its own toggle, and must be filled if turned on). Start a product from a **premade preset** or **Duplicate** an entry. A running summary shows every product, the product charge, the delivery charge, and the grand total. A ticket number is assigned on submit. |
-| **All Orders** | Spreadsheet-style list, one row per order. Sort/search; click a row for full detail. **Payment status** (Not Paid / Paid) is manual. **Progress status** — None Made / Some Made / All Made / Delivered — is auto-calculated from the products' Made state and overridable (with an **Auto** button). **Export CSV** (top-right) downloads every order regardless of the on-screen search/sort. |
+| **All Orders** | Spreadsheet-style list, one row per order. Sort/search; click a row for full detail. **Payment status** (Not Paid / Paid) is manual. **Production status** (None/Some/All Made) auto-calculates from the products' Made flags; **Delivery status** (None/Some/All Delivered) auto-calculates from the products' Delivered flags (set in a batch) — each is independently overridable with an **Auto** button. **Export CSV** (top-right) downloads every order regardless of the on-screen search/sort. |
 | **Materials** | List of supplies with a stock count and a per-unit **cost**. Add / edit any row. |
 | **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). A speed shortcut for New Order only — no stock, not part of order/inventory logic. |
 | **Delivery Cost** | Reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
-| **Products** | Every product from every order — one row each, tagged with its ticket. Columns include Made toggle, Pickup/Delivery type, delivery location, address, delivery charge, and two label-printed flags (**G**ift / **S**hipping — click to toggle). Editable in place (same record the order shows). Tick rows and use **Export Gift Labels** / **Export Shipping Labels** to make a print-ready PDF (pick the first empty slot on a partly-used Avery sheet, confirm the list, then download; picked products are marked printed). The **⚙** button opens **Label Settings** to adjust each sheet's dimensions. **Export CSV** downloads every product row. |
+| **Delivery Batches** | Group products into a delivery run. Each batch has a name; products are added from the Products tab selection bar and can be reassigned or removed. Inside a batch the products are read-only except a Delivered / Not Delivered toggle, and are re-orderable by drag or ▲ ▼ to set the route. **Open Route in Maps** builds one Google Maps multi-stop directions link with every address in the current order. |
+| **Products** | Every product from every order — one row each, tagged with its ticket and **batch**. Editable in place (same record the order shows). Press **Select** for selection mode: click a row to select it, shift-click for a range; an action bar then offers **Delete**, **Export Gift Labels**, **Export Shipping Labels**, and **Create Batch**. Label PDFs: pick the first empty slot on a partly-used Avery sheet, confirm, download (picked products are marked printed). The **⚙** button opens **Label Settings**. **Export CSV** downloads every product row. |
 | **Financials** | Auto-updating dashboard: total orders, total products sold, **total delivery income**, revenue (paid / not paid / total), profit (paid / not paid / total). Nothing to type here. |
 
 ### Inventory logic
@@ -22,12 +23,18 @@ product in it has its stock reduced by the quantity used. Editing a product's
 materials moves stock back and forth to match, and deleting a product or a whole
 order returns its materials to stock.
 
-### Order progress
+### Order status
 
-Each product has a Made / Not-made flag. An order's progress is derived from its
-products: **None Made** (zero made), **Some Made** (a mix), **All Made** (all made).
-Setting any value manually — including **Delivered** — freezes it as an override;
-the **Auto** button clears the override so it follows the products again.
+Two independent, auto-calculated order statuses (plus the separate manual
+Paid / Not Paid):
+
+- **Production** — from each product's Made / Not-made flag (toggled on Products or
+  in the order): **None Made** / **Some Made** / **All Made**.
+- **Delivery** — from each product's Delivered / Not-delivered flag (toggled inside
+  the product's batch): **None Delivered** / **Some Delivered** / **All Delivered**.
+
+Either can be manually set to a specific value (freezing it as an override); the
+**Auto** button clears the override so it tracks the products again.
 
 ### Label export
 

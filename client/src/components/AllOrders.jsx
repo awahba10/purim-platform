@@ -13,8 +13,10 @@ const CSV_COLUMNS = [
   { label: 'Total product charge', get: (o) => o.total_price.toFixed(2) },
   { label: 'Total profit', get: (o) => o.total_profit.toFixed(2) },
   { key: 'payment_status', label: 'Payment' },
-  { key: 'progress_status', label: 'Progress' },
-  { label: 'Progress source', get: (o) => (o.progress_is_auto ? 'auto' : 'manual') },
+  { key: 'production_status', label: 'Production' },
+  { label: 'Production source', get: (o) => (o.production_is_auto ? 'auto' : 'manual') },
+  { key: 'delivery_status', label: 'Delivery' },
+  { label: 'Delivery source', get: (o) => (o.delivery_is_auto ? 'auto' : 'manual') },
   { label: 'Created', get: (o) => new Date(o.created_at).toISOString() },
 ];
 
@@ -26,15 +28,16 @@ const COLUMNS = [
   { key: 'product_count', label: 'Products' },
   { key: 'total_price', label: 'Charge' },
   { key: 'payment_status', label: 'Payment' },
-  { key: 'progress_status', label: 'Progress' },
+  { key: 'production_status', label: 'Production' },
+  { key: 'delivery_status', label: 'Delivery' },
   { key: 'created_at', label: 'Created' },
 ];
 
 const NUMERIC = new Set(['product_count', 'total_price']);
 
-function progressClass(status) {
-  if (status === 'Delivered' || status === 'All Made') return 'ok';
-  if (status === 'Some Made') return 'info';
+function statusClass(status) {
+  if (status === 'All Made' || status === 'All Delivered') return 'ok';
+  if (status === 'Some Made' || status === 'Some Delivered') return 'info';
   return 'warn';
 }
 
@@ -144,15 +147,20 @@ export default function AllOrders() {
                 </td>
                 <td>
                   <span
-                    className={'badge ' + progressClass(o.progress_status)}
-                    title={
-                      o.progress_is_auto
-                        ? 'Auto from products'
-                        : 'Manually set'
-                    }
+                    className={'badge ' + statusClass(o.production_status)}
+                    title={o.production_is_auto ? 'Auto from products' : 'Manually set'}
                   >
-                    {o.progress_status}
-                    {!o.progress_is_auto && ' •'}
+                    {o.production_status}
+                    {!o.production_is_auto && ' •'}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    className={'badge ' + statusClass(o.delivery_status)}
+                    title={o.delivery_is_auto ? 'Auto from products' : 'Manually set'}
+                  >
+                    {o.delivery_status}
+                    {!o.delivery_is_auto && ' •'}
                   </span>
                 </td>
                 <td>{new Date(o.created_at).toLocaleDateString()}</td>

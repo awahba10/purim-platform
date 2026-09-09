@@ -11,21 +11,25 @@ CREATE TABLE IF NOT EXISTS materials (
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS cost NUMERIC(10, 2) NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS orders (
-  id               SERIAL PRIMARY KEY,
-  ticket_number    TEXT UNIQUE,
-  customer_name    TEXT NOT NULL,
-  phone            TEXT,
-  contact_method   TEXT,
-  payment_status   TEXT NOT NULL DEFAULT 'Not Paid',
-  progress_override TEXT,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                  SERIAL PRIMARY KEY,
+  ticket_number       TEXT UNIQUE,
+  customer_name       TEXT NOT NULL,
+  phone               TEXT,
+  contact_method      TEXT,
+  payment_status      TEXT NOT NULL DEFAULT 'Not Paid',
+  production_override TEXT,
+  delivery_override   TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Progress is normally calculated from the order's products' is_made flags.
--- progress_override holds a manually chosen value ('None Made' | 'Some Made' |
--- 'All Made' | 'Delivered') and is NULL when the order follows the auto value.
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS progress_override TEXT;
+-- Order status is split into two independently auto-calculated values, each
+-- with an optional manual override (NULL = follow the auto value):
+--   production_override: 'None Made' | 'Some Made' | 'All Made'
+--   delivery_override:   'None Delivered' | 'Some Delivered' | 'All Delivered'
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS production_override TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_override TEXT;
 ALTER TABLE orders DROP COLUMN IF EXISTS progress_status;
+ALTER TABLE orders DROP COLUMN IF EXISTS progress_override;
 
 -- Products are created inside an order. One row per product, always tied to
 -- exactly one order (its ticket number comes from that order).
@@ -41,8 +45,22 @@ CREATE TABLE IF NOT EXISTS products (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Delivery batches: a user-named group of products for one delivery run.
+CREATE TABLE IF NOT EXISTS batches (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Per-product progress: has this product been assembled yet?
 ALTER TABLE products ADD COLUMN IF NOT EXISTS is_made BOOLEAN NOT NULL DEFAULT false;
+-- Per-product delivered flag, toggled from the batch view; feeds the order's
+-- Delivery status.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_delivered BOOLEAN NOT NULL DEFAULT false;
+-- Batch membership + position within the batch (drag-and-drop route order).
+ALTER TABLE products ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS batch_position INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_products_batch ON products(batch_id);
 
 -- Per-product fulfillment. 'Delivery' products carry an address, a delivery
 -- location name (free text), and a manually chosen delivery charge. 'Pickup'

@@ -11,11 +11,13 @@ import {
 import ProductFields from './ProductFields';
 import LabelExport from './LabelExport';
 import LabelSettings from './LabelSettings';
+import CreateBatchModal from './CreateBatchModal';
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
   { key: 'customer_name', label: 'Customer' },
   { key: 'name', label: 'Product' },
+  { key: 'batch_name', label: 'Batch' },
   { key: 'is_made', label: 'Made' },
   { key: 'fulfillment', label: 'Type' },
   { key: 'delivery_location', label: 'Location' },
@@ -33,7 +35,9 @@ const CSV_COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
   { key: 'customer_name', label: 'Customer' },
   { key: 'name', label: 'Product' },
+  { key: 'batch_name', label: 'Batch' },
   { label: 'Made', get: (p) => (p.is_made ? 'Made' : 'Not made') },
+  { label: 'Delivered', get: (p) => (p.is_delivered ? 'Delivered' : '') },
   { key: 'fulfillment', label: 'Fulfillment' },
   { key: 'delivery_location', label: 'Delivery location' },
   { key: 'address', label: 'Address' },
@@ -59,12 +63,16 @@ export default function Products() {
   const [materials, setMaterials] = useState([]);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
   const [editing, setEditing] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
-  const [labelExport, setLabelExport] = useState(null); // { kind }
+  const [lastId, setLastId] = useState(null);
+  const [labelExport, setLabelExport] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -74,12 +82,14 @@ export default function Products() {
       api.get('/materials'),
       api.get('/delivery-locations'),
       api.get('/label-templates'),
+      api.get('/batches'),
     ])
-      .then(([p, m, d, t]) => {
+      .then(([p, m, d, t, b]) => {
         setProducts(p);
         setMaterials(m);
         setDeliveryLocations(d);
         setTemplates(t);
+        setBatches(b);
       })
       .catch((e) => setError(e.message));
 
@@ -92,7 +102,7 @@ export default function Products() {
     let list = products;
     if (needle) {
       list = list.filter((p) =>
-        [p.name, p.ticket_number, p.customer_name, p.delivery_location, p.address].some(
+        [p.name, p.ticket_number, p.customer_name, p.delivery_location, p.address, p.batch_name].some(
           (v) => (v || '').toLowerCase().includes(needle)
         )
       );
@@ -126,49 +136,99 @@ export default function Products() {
 
   const templateFor = (kind) => templates.find((t) => t.key === kind);
 
-  const allShownSelected = rows.length > 0 && rows.every((p) => selected.has(p.id));
-  const toggleAll = () =>
-    setSelected((s) => {
-      const next = new Set(s);
-      if (allShownSelected) rows.forEach((p) => next.delete(p.id));
-      else rows.forEach((p) => next.add(p.id));
-      return next;
-    });
-  const toggleOne = (id) =>
-    setSelected((s) => {
-      const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-
   const selectedProducts = useMemo(
-    () =>
-      products
-        .filter((p) => selected.has(p.id))
-        .sort((a, b) => a.id - b.id),
+    () => products.filter((p) => selected.has(p.id)).sort((a, b) => a.id - b.id),
     [products, selected]
   );
 
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelected(new Set());
+    setLastId(null);
+  };
+
+  const rowClick = (p, e) => {
+    if (!selectMode) {
+      setEditing({ product: p, draft: productToDraft(p) });
+      return;
+    }
+    setSelected((s) => {
+      const next = new Set(s);
+      const ids = rows.map((r) => r.id);
+      if (e.shiftKey && lastId != null && ids.includes(lastId)) {
+        const a = ids.indexOf(lastId);
+        const b = ids.indexOf(p.id);
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        for (let k = lo; k <= hi; k++) next.add(ids[k]);
+      } else if (next.has(p.id)) {
+        next.delete(p.id);
+      } else {
+        next.add(p.id);
+      }
+      return next;
+    });
+    setLastId(p.id);
+  };
+
+  const bulkDelete = async () => {
+    if (
+      !window.confirm(
+        `Delete ${selected.size} product${selected.size === 1 ? '' : 's'}? Their materials go back to stock.`
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      for (const id of selected) await api.del(`/products/${id}`);
+      exitSelect();
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startExport = (kind) => {
     setError('');
-    if (!selectedProducts.length) {
-      setError('Tick the products you want labels for first.');
-      return;
-    }
-    if (!templateFor(kind)) {
-      setError('Label template not loaded yet — try again in a moment.');
-      return;
-    }
+    if (!selectedProducts.length) return setError('Select some products first.');
+    if (!templateFor(kind)) return setError('Label template not loaded yet.');
     setLabelExport({ kind });
   };
 
   const markPrinted = async (ids, kind) => {
     const field = kind === 'gift' ? 'gift_label_printed' : 'shipping_label_printed';
-    for (const id of ids) {
-      await api.patch(`/products/${id}`, { [field]: true });
-    }
-    setSelected(new Set());
+    for (const id of ids) await api.patch(`/products/${id}`, { [field]: true });
+    exitSelect();
     await load();
+  };
+
+  const changeBatch = async (p, val) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/products/${p.id}`, {
+        batch_id: val === '' ? null : Number(val),
+      });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleMade = async (p) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.patch(`/products/${p.id}`, { is_made: !p.is_made });
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const toggleFlag = async (p, field) => {
@@ -222,24 +282,17 @@ export default function Products() {
     }
   };
 
-  const toggleMade = async (p) => {
-    setBusy(true);
-    setError('');
-    try {
-      await api.patch(`/products/${p.id}`, { is_made: !p.is_made });
-      load();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <div className="panel">
       <div className="panel-head">
         <h1>Products</h1>
         <div className="ph-actions">
+          <button
+            className={selectMode ? 'primary' : ''}
+            onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+          >
+            {selectMode ? 'Done' : 'Select'}
+          </button>
           <button
             className="icon-btn gear"
             title="Label settings"
@@ -248,45 +301,49 @@ export default function Products() {
           >
             ⚙
           </button>
-          <button onClick={() => startExport('gift')}>Export Gift Labels</button>
-          <button onClick={() => startExport('shipping')}>
-            Export Shipping Labels
-          </button>
           <button onClick={exportCsv} disabled={products.length === 0}>
             Export CSV
           </button>
         </div>
       </div>
       <p className="subtle">
-        Every product from every order — one row each. Tick rows (narrow the list
-        with search first) then use the label buttons above. Editing a row changes
-        the same record the order shows.
+        Every product from every order — one row each. Editing a row changes the same
+        record the order shows. Use <strong>Select</strong> to pick rows for bulk
+        actions (click a row, shift-click another to select the range).
       </p>
+
       <div className="row-between">
         <input
           className="search"
-          placeholder="Search by product, ticket, customer, location, or address…"
+          placeholder="Search by product, ticket, customer, batch, location, or address…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {selected.size > 0 && (
-          <span className="subtle">{selected.size} selected</span>
-        )}
       </div>
+
+      {selectMode && selected.size > 0 && (
+        <div className="action-bar">
+          <span>{selected.size} selected</span>
+          <button className="danger" onClick={bulkDelete} disabled={busy}>
+            Delete
+          </button>
+          <button onClick={() => startExport('gift')}>Export Gift Labels</button>
+          <button onClick={() => startExport('shipping')}>
+            Export Shipping Labels
+          </button>
+          <button className="primary" onClick={() => setShowBatchModal(true)}>
+            Create Batch
+          </button>
+          <button onClick={() => setSelected(new Set())}>Clear</button>
+        </div>
+      )}
+
       {error && <div className="error">{error}</div>}
 
       <div className="table-wrap">
         <table className="grid">
           <thead>
             <tr>
-              <th className="chk-col">
-                <input
-                  type="checkbox"
-                  checked={allShownSelected}
-                  onChange={toggleAll}
-                  aria-label="Select all shown"
-                />
-              </th>
               {COLUMNS.map((c) => (
                 <th key={c.key} onClick={() => toggleSort(c.key)}>
                   {c.label}
@@ -302,28 +359,38 @@ export default function Products() {
             {rows.map((p) => (
               <tr
                 key={p.id}
-                className={selected.has(p.id) ? 'row-selected' : ''}
-                onClick={() => setEditing({ product: p, draft: productToDraft(p) })}
+                className={
+                  (selectMode ? 'selectable ' : '') +
+                  (selectMode && selected.has(p.id) ? 'row-selected' : '')
+                }
+                onMouseDown={(e) => {
+                  if (selectMode && e.shiftKey) e.preventDefault();
+                }}
+                onClick={(e) => rowClick(p, e)}
               >
-                <td className="chk-col" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(p.id)}
-                    onChange={() => toggleOne(p.id)}
-                    aria-label={`Select ${p.ticket_number}`}
-                  />
-                </td>
                 <td>{p.ticket_number}</td>
                 <td>{p.customer_name}</td>
                 <td>{p.name}</td>
-                <td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  <select
+                    className="batch-select"
+                    value={p.batch_id ?? ''}
+                    disabled={busy}
+                    onChange={(e) => changeBatch(p, e.target.value)}
+                  >
+                    <option value="">— none —</option>
+                    {batches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td onClick={(e) => e.stopPropagation()}>
                   <button
                     className={'made-toggle ' + (p.is_made ? 'on' : 'off')}
                     disabled={busy}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMade(p);
-                    }}
+                    onClick={() => toggleMade(p)}
                   >
                     {p.is_made ? 'Made' : 'Not made'}
                   </button>
@@ -339,9 +406,7 @@ export default function Products() {
                 <td onClick={(e) => e.stopPropagation()}>
                   <span className="label-flags">
                     <button
-                      className={
-                        'flag ' + (p.gift_label_printed ? 'on' : 'off')
-                      }
+                      className={'flag ' + (p.gift_label_printed ? 'on' : 'off')}
                       disabled={busy}
                       title={
                         p.gift_label_printed
@@ -353,9 +418,7 @@ export default function Products() {
                       G
                     </button>
                     <button
-                      className={
-                        'flag ' + (p.shipping_label_printed ? 'on' : 'off')
-                      }
+                      className={'flag ' + (p.shipping_label_printed ? 'on' : 'off')}
                       disabled={busy}
                       title={
                         p.shipping_label_printed
@@ -375,14 +438,8 @@ export default function Products() {
                         .join(', ')
                     : '—'}
                 </td>
-                <td className="right">
-                  <button
-                    className="danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(p);
-                    }}
-                  >
+                <td className="right" onClick={(e) => e.stopPropagation()}>
+                  <button className="danger" onClick={() => remove(p)}>
                     Delete
                   </button>
                 </td>
@@ -390,7 +447,7 @@ export default function Products() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 4} className="subtle">
+                <td colSpan={COLUMNS.length + 3} className="subtle">
                   No products yet — create an order.
                 </td>
               </tr>
@@ -440,6 +497,18 @@ export default function Products() {
 
       {showSettings && (
         <LabelSettings onClose={() => setShowSettings(false)} onSaved={load} />
+      )}
+
+      {showBatchModal && (
+        <CreateBatchModal
+          productIds={selectedProducts.map((p) => p.id)}
+          onClose={() => setShowBatchModal(false)}
+          onDone={() => {
+            setShowBatchModal(false);
+            exitSelect();
+            load();
+          }}
+        />
       )}
     </div>
   );
