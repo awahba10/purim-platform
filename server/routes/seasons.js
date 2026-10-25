@@ -7,6 +7,7 @@ const toRow = (s) => ({
   created_at: s.created_at,
   order_count: Number(s.order_count || 0),
   product_count: Number(s.product_count || 0),
+  batch_count: Number(s.batch_count || 0),
 });
 
 async function listSeasons(db) {
@@ -14,7 +15,8 @@ async function listSeasons(db) {
     `SELECT s.*,
             (SELECT COUNT(*) FROM orders o WHERE o.season_id = s.id) AS order_count,
             (SELECT COUNT(*) FROM products p JOIN orders o ON o.id = p.order_id
-              WHERE o.season_id = s.id) AS product_count
+              WHERE o.season_id = s.id) AS product_count,
+            (SELECT COUNT(*) FROM batches b WHERE b.season_id = s.id) AS batch_count
        FROM seasons s
       ORDER BY s.created_at DESC, s.id DESC`
   );
@@ -102,6 +104,49 @@ router.post('/:id/reopen', async (req, res, next) => {
     );
     await client.query('COMMIT');
     res.json(await seasonById(pool, req.params.id));
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE a season — only an empty, non-active one (no orders, no batches),
+// e.g. one made by mistake. Its zero stock rows go with it. Seasons holding
+// any data can never be deleted.
+router.delete('/:id', async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('LOCK TABLE seasons IN EXCLUSIVE MODE');
+    const { rows } = await client.query(
+      `SELECT s.status,
+              (SELECT COUNT(*)::int FROM orders o WHERE o.season_id = s.id) AS orders,
+              (SELECT COUNT(*)::int FROM batches b WHERE b.season_id = s.id) AS batches
+         FROM seasons s WHERE s.id = $1`,
+      [req.params.id]
+    );
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Season not found' });
+    }
+    const s = rows[0];
+    if (s.status === 'Active') {
+      await client.query('ROLLBACK');
+      return res
+        .status(400)
+        .json({ error: "The active season can't be deleted. Reopen another season first." });
+    }
+    if (s.orders > 0 || s.batches > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `This season has ${s.orders} order(s) and ${s.batches} batch(es), so it can't be deleted. Only empty seasons can be.`,
+      });
+    }
+    await client.query('DELETE FROM seasons WHERE id = $1', [req.params.id]);
+    await client.query('COMMIT');
+    res.status(204).end();
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);

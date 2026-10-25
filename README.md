@@ -29,13 +29,16 @@ Everything is saved by season (e.g. "Purim 2027"). A season is **Active** or
   premade products (incl. anchor tray), Delivery Cost locations, and label
   sheet settings. Products keep their own saved cost and price, so past
   financials never change.
-- **Switcher:** the season chip at the top of every page lists all seasons and
-  switches the whole app. The app opens on the newest Active season; a choice
+- **Switcher:** the season chip in the sidebar, under Financials, lists all
+  seasons and switches the whole app. The app opens on the newest Active season; a choice
   made with the switcher is remembered for that browser tab (refreshes and
   navigation keep it).
 - **New Season…** (in the switcher) asks for a name, closes the Active season,
-  and starts an empty one with all stock at 0.
-- **Closed seasons are read-only**, enforced by the server: a banner offers
+  and starts an empty one with all stock at 0. An empty, non-active season
+  (no orders, no batches) can be deleted from the same menu; seasons with any
+  data can't be.
+- **Closed seasons are read-only**, enforced by the server: a banner at the
+  top of the page offers
   **Unlock to edit** (until you switch seasons, reload, or click **Lock
   again**) and **Reopen as active season**. Viewing, filtering and exports
   still work. New Order is off while a closed season is locked. Materials used

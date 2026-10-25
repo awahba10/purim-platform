@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import SeasonSwitcher from './SeasonSwitcher';
 
 export default function Sidebar({ nav }) {
   return (
@@ -17,6 +18,7 @@ export default function Sidebar({ nav }) {
           </li>
         ))}
       </ul>
+      <SeasonSwitcher />
     </nav>
   );
 }

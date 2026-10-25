@@ -1726,3 +1726,103 @@ td.right button {
   font-weight: 700;
   color: var(--brand);
 }
+
+/* --- Season switcher in the sidebar (under Financials) --- */
+.season-switcher {
+  position: relative;
+  margin: 14px 2px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.ss-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 10px 6px;
+}
+.sidebar .season-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1.5px solid var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.sidebar .season-chip:hover {
+  background: #ebe3fd;
+}
+.sidebar .season-chip.closed {
+  border-color: #c9ccd2;
+  background: #eef0f2;
+  color: var(--ink);
+}
+.sidebar .season-chip .sc-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.sidebar .season-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(320px, calc(100vw - 32px));
+}
+.sidebar .season-menu .cm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  padding: 8px 10px;
+  font-weight: 400;
+}
+.sidebar .season-menu .cm-item.current {
+  color: var(--brand);
+  font-weight: 600;
+}
+.sidebar .season-menu .cm-item.new {
+  color: var(--brand);
+}
+.sm-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sm-row .cm-item {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar .sm-del {
+  width: auto;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+  border-radius: 6px;
+}
+.sidebar .sm-del:hover {
+  background: #fef2f2;
+}
+.ss-error {
+  margin-top: 8px;
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .season-switcher {
+    margin: 10px 0 0;
+    padding-top: 10px;
+  }
+  .sidebar .season-chip {
+    width: auto;
+    max-width: 100%;
+  }
+}
