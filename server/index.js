@@ -12,6 +12,9 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.use('/api/seasons', require('./routes/seasons'));
+// Everything below is scoped to the season the client is viewing.
+app.use('/api', require('./lib/seasons').seasonContext);
 app.use('/api/materials', require('./routes/materials'));
 app.use('/api/delivery-locations', require('./routes/deliveryLocations'));
 app.use('/api/label-templates', require('./routes/labelTemplates'));

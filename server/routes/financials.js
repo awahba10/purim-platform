@@ -6,12 +6,15 @@ const { pool } = require('../db');
 router.get('/', async (req, res, next) => {
   try {
     const { rows: orderCount } = await pool.query(
-      'SELECT COUNT(*)::int AS n FROM orders'
+      'SELECT COUNT(*)::int AS n FROM orders WHERE season_id = $1',
+      [req.season.id]
     );
     const { rows } = await pool.query(
       `SELECT o.payment_status, p.price, p.cost, p.delivery_charge
          FROM products p
-         JOIN orders o ON o.id = p.order_id`
+         JOIN orders o ON o.id = p.order_id
+        WHERE o.season_id = $1`,
+      [req.season.id]
     );
 
     let paidRevenue = 0;

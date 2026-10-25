@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { pool } = require('../db');
+const { assertWritable } = require('../lib/seasons');
 
 const NUMERIC_FIELDS = [
   'page_w',
@@ -33,6 +34,7 @@ router.get('/', async (req, res, next) => {
 // Edit one template (by key: 'gift' or 'shipping').
 router.patch('/:key', async (req, res, next) => {
   try {
+    assertWritable(req, req.season);
     const f = req.body;
     const sets = [];
     const vals = [];

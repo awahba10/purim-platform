@@ -13,6 +13,7 @@ import {
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
+import { useSeason } from '../season';
 
 const PAYMENT = ['Paid', 'Partially Paid', 'Not Paid'];
 const PRODUCTION = ['None Made', 'Some Made', 'All Made'];
@@ -116,6 +117,7 @@ function Field({ label, children }) {
 }
 
 export default function OrderDetail({ id, onClose, onChanged }) {
+  const { current, readOnly, switchTo } = useSeason();
   const [order, setOrder] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [presets, setPresets] = useState([]);
@@ -130,6 +132,11 @@ export default function OrderDetail({ id, onClose, onChanged }) {
   const load = () =>
     Promise.all([api.get(`/orders/${id}`), api.get('/materials'), api.get('/presets')])
       .then(([o, m, ps]) => {
+        // A link to an order from another season switches the app to it.
+        if (o.season_id && o.season_id !== current.id) {
+          switchTo(o.season_id);
+          return;
+        }
         setOrder(o);
         setOrderForm(o);
         setMaterials(m);
@@ -272,7 +279,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                   {PAYMENT.map((s) => (
                     <button
                       key={s}
-                      disabled={busy}
+                      disabled={busy || readOnly}
                       className={order.payment_status === s ? 'pill active' : 'pill'}
                       onClick={() => patchOrder({ payment_status: s })}
                     >
@@ -283,7 +290,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
               </StatusRow>
               <PaymentMethodRow
                 stored={order.payment_method}
-                busy={busy}
+                busy={busy || readOnly}
                 onSave={(v) => patchOrder({ payment_method: v })}
               />
               <StatusGroup
@@ -292,7 +299,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 value={order.production_status}
                 computed={order.production_computed}
                 isAuto={order.production_is_auto}
-                busy={busy}
+                busy={busy || readOnly}
                 onPick={(s) => patchOrder({ production_status: s })}
                 onAuto={() => patchOrder({ production_auto: true })}
               />
@@ -302,7 +309,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 value={order.delivery_status}
                 computed={order.delivery_computed}
                 isAuto={order.delivery_is_auto}
-                busy={busy}
+                busy={busy || readOnly}
                 onPick={(s) => patchOrder({ delivery_status: s })}
                 onAuto={() => patchOrder({ delivery_auto: true })}
               />
@@ -413,6 +420,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 )}
                 {p.notes && <div className="subtle">Maker notes: {p.notes}</div>}
                 {p.gift_message && <div className="subtle">Gift message: {p.gift_message}</div>}
+                {!readOnly && (
                 <div className="pc-actions">
                   <button disabled={busy} onClick={() => toggleMade(p)}>
                     {p.is_made ? 'Mark not made' : 'Mark made'}
@@ -429,8 +437,10 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                     Remove
                   </button>
                 </div>
+                )}
               </div>
             ))}
+            {!readOnly && (
             <button
               type="button"
               className="add-product"
@@ -441,6 +451,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
             >
               + Add product to this order
             </button>
+            )}
 
             <div className="summary-totals" style={{ marginTop: 16 }}>
               <div>
@@ -453,6 +464,9 @@ export default function OrderDetail({ id, onClose, onChanged }) {
               </div>
             </div>
 
+            {readOnly ? (
+              <p className="hint">This season is locked — unlock it in the banner to make changes.</p>
+            ) : (
             <div className="modal-actions">
               {!editingOrder && (
                 <button className="primary" onClick={() => setEditingOrder(true)}>
@@ -463,6 +477,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 Delete order
               </button>
             </div>
+            )}
           </>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useSeason } from '../season';
 
 // Group every product row (across all orders) by product name, with tallies.
 function buildGroups(products) {
@@ -43,6 +44,7 @@ export default function Production() {
   const navigate = useNavigate();
   const { name } = useParams(); // react-router already URL-decodes this
   const selectedName = name || null;
+  const { readOnly } = useSeason();
 
   const [products, setProducts] = useState(null);
   const [error, setError] = useState('');
@@ -144,7 +146,7 @@ export default function Production() {
                     </strong>
                     <button
                       className={'made-toggle ' + (p.is_made ? 'on' : 'off')}
-                      disabled={busyId === p.id}
+                      disabled={busyId === p.id || readOnly}
                       onClick={() => toggleMade(p)}
                     >
                       {p.is_made ? 'Mark not made' : 'Mark made'}

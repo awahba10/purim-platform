@@ -1,5 +1,20 @@
 -- Runs on every server start. Safe to run repeatedly.
 
+-- Seasons (e.g. "Purim 2027"). Orders, their products, batches, ticket numbers
+-- and material stock counts belong to one season. Only one is Active at a time.
+CREATE TABLE IF NOT EXISTS seasons (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'Active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Small key/value store (e.g. the one-time season migration report).
+CREATE TABLE IF NOT EXISTS app_meta (
+  key   TEXT PRIMARY KEY,
+  value JSONB NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS materials (
   id       SERIAL PRIMARY KEY,
   name     TEXT NOT NULL,
@@ -36,6 +51,12 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_override TEXT;
 -- "Other"). Optional — NULL until known.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT;
 ALTER TABLE orders DROP COLUMN IF EXISTS progress_status;
+-- Season ownership. Ticket numbers are unique within a season (restart at
+-- T-0001 each season), so the old global uniqueness rule is replaced.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS season_id INTEGER REFERENCES seasons(id);
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_ticket_number_key;
+CREATE UNIQUE INDEX IF NOT EXISTS orders_season_ticket ON orders(season_id, ticket_number);
+CREATE INDEX IF NOT EXISTS idx_orders_season ON orders(season_id);
 ALTER TABLE orders DROP COLUMN IF EXISTS progress_override;
 
 -- Products are created inside an order. One row per product, always tied to
@@ -58,6 +79,9 @@ CREATE TABLE IF NOT EXISTS batches (
   name       TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE batches ADD COLUMN IF NOT EXISTS season_id INTEGER REFERENCES seasons(id);
+CREATE INDEX IF NOT EXISTS idx_batches_season ON batches(season_id);
 
 -- Per-product progress: has this product been assembled yet?
 ALTER TABLE products ADD COLUMN IF NOT EXISTS is_made BOOLEAN NOT NULL DEFAULT false;
@@ -93,6 +117,18 @@ CREATE TABLE IF NOT EXISTS product_materials (
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_order_id ON products(order_id);
+
+-- Stock counts per season. The materials list itself (name, cost, limiting
+-- flag) is shared by every season; only quantities are tracked per season.
+-- A missing row means 0 in stock. (materials.quantity / starting_quantity are
+-- the pre-season values, kept untouched as a record of the migration.)
+CREATE TABLE IF NOT EXISTS material_stock (
+  season_id         INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+  material_id       INTEGER NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
+  quantity          INTEGER NOT NULL DEFAULT 0,
+  starting_quantity INTEGER,
+  PRIMARY KEY (season_id, material_id)
+);
 
 -- Premade product presets: a speed shortcut for New Order. Not involved in
 -- inventory or order logic — purely a template. Cost is always computed from

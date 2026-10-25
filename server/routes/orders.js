@@ -8,8 +8,17 @@ const {
   addNeeds,
   assertTrayStock,
 } = require('../lib/products');
+const { assertWritable, seasonOfOrder, nextTicket, toSeason } = require('../lib/seasons');
 
-const ticketFor = (id) => 'T-' + String(id).padStart(4, '0');
+// Every season the given orders belong to must be writable.
+async function assertOrdersWritable(req, ids) {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT s.* FROM orders o JOIN seasons s ON s.id = o.season_id
+      WHERE o.id = ANY($1::int[])`,
+    [ids]
+  );
+  for (const s of rows) assertWritable(req, toSeason(s));
+}
 const PAYMENT_STATUSES = ['Paid', 'Partially Paid', 'Not Paid'];
 const cleanMethod = (v) => (v == null ? null : String(v).trim() || null);
 const cleanIds = (ids) =>
@@ -27,8 +36,10 @@ router.get('/', async (req, res, next) => {
               COALESCE(SUM(p.cost), 0) AS total_cost
          FROM orders o
          LEFT JOIN products p ON p.order_id = o.id
+        WHERE o.season_id = $1
         GROUP BY o.id
-        ORDER BY o.created_at DESC`
+        ORDER BY o.created_at DESC`,
+      [req.season.id]
     );
     res.json(rows.map((o) => toOrder({ ...o, products: [] })));
   } catch (err) {
@@ -55,6 +66,7 @@ router.post('/bulk-update', async (req, res, next) => {
       sets.push(`payment_method = $${vals.length}`);
     }
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+    await assertOrdersWritable(req, ids);
     vals.push(ids);
     const { rowCount } = await pool.query(
       `UPDATE orders SET ${sets.join(', ')} WHERE id = ANY($${vals.length}::int[])`,
@@ -73,6 +85,7 @@ router.post('/bulk-delete', async (req, res, next) => {
   if (!ids.length) return res.status(400).json({ error: 'No orders selected' });
   const client = await pool.connect();
   try {
+    await assertOrdersWritable(req, ids);
     await client.query('BEGIN');
     const { rows } = await client.query(
       'SELECT id FROM products WHERE order_id = ANY($1::int[])',
@@ -121,25 +134,27 @@ router.post('/', async (req, res, next) => {
 
   const client = await pool.connect();
   try {
+    assertWritable(req, req.season);
+    const sid = req.season.id;
     await client.query('BEGIN');
+    const ticket = await nextTicket(client, sid);
     const needs = new Map();
     for (const p of list) addNeeds(needs, p.materials);
-    await assertTrayStock(client, needs);
+    await assertTrayStock(client, needs, sid);
     const { rows } = await client.query(
-      `INSERT INTO orders (customer_name, phone, contact_method, payment_method)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
+      `INSERT INTO orders
+         (customer_name, phone, contact_method, payment_method, season_id, ticket_number)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [
         customer_name.trim(),
         (phone || '').trim() || null,
         (contact_method || '').trim() || null,
         cleanMethod(payment_method),
+        sid,
+        ticket,
       ]
     );
     const orderId = rows[0].id;
-    await client.query('UPDATE orders SET ticket_number = $1 WHERE id = $2', [
-      ticketFor(orderId),
-      orderId,
-    ]);
     for (const p of list) {
       await insertProduct(client, orderId, p);
     }
@@ -156,6 +171,9 @@ router.post('/', async (req, res, next) => {
 // UPDATE order-level fields (customer, phone, contact, statuses).
 router.patch('/:id', async (req, res, next) => {
   try {
+    const season = await seasonOfOrder(pool, req.params.id);
+    if (!season) return res.status(404).json({ error: 'Order not found' });
+    assertWritable(req, season);
     const f = req.body;
     const sets = [];
     const vals = [];
@@ -201,6 +219,9 @@ router.patch('/:id', async (req, res, next) => {
 router.post('/:id/products', async (req, res, next) => {
   const client = await pool.connect();
   try {
+    const season = await seasonOfOrder(pool, req.params.id);
+    if (!season) return res.status(404).json({ error: 'Order not found' });
+    assertWritable(req, season);
     await client.query('BEGIN');
     const { rows } = await client.query(
       'SELECT id FROM orders WHERE id = $1 FOR UPDATE',
@@ -210,7 +231,7 @@ router.post('/:id/products', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Order not found' });
     }
-    await assertTrayStock(client, addNeeds(new Map(), req.body.materials));
+    await assertTrayStock(client, addNeeds(new Map(), req.body.materials), season.id);
     await insertProduct(client, rows[0].id, req.body);
     await client.query('COMMIT');
     res.status(201).json(await fetchOrderFull(pool, req.params.id));
@@ -226,6 +247,9 @@ router.post('/:id/products', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   const client = await pool.connect();
   try {
+    const season = await seasonOfOrder(pool, req.params.id);
+    if (!season) return res.status(404).json({ error: 'Order not found' });
+    assertWritable(req, season);
     await client.query('BEGIN');
     const { rows } = await client.query(
       'SELECT id FROM products WHERE order_id = $1',

@@ -51,6 +51,7 @@ const toOrder = (o) => {
 
   return {
     ...o,
+    season_id: o.season_id != null ? Number(o.season_id) : null,
     product_count: productCount,
     made_count: madeCount,
     delivered_count: deliveredCount,
@@ -130,7 +131,19 @@ async function suggestedCost(db, materials) {
   );
 }
 
-// Insert one product under an order, link its materials, decrement stock.
+// Change one material's stock count in one season (a missing row counts as 0).
+async function adjustStock(db, seasonId, materialId, delta) {
+  await db.query(
+    `INSERT INTO material_stock (season_id, material_id, quantity)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (season_id, material_id)
+     DO UPDATE SET quantity = material_stock.quantity + EXCLUDED.quantity`,
+    [seasonId, materialId, delta]
+  );
+}
+
+// Insert one product under an order, link its materials, and take the stock
+// from the order's season.
 async function insertProduct(client, orderId, input) {
   const name = (input.name || '').trim();
   if (!name) {
@@ -188,6 +201,10 @@ async function insertProduct(client, orderId, input) {
     ]
   );
   const productId = rows[0].id;
+  const { rows: so } = await client.query('SELECT season_id FROM orders WHERE id = $1', [
+    orderId,
+  ]);
+  const seasonId = so[0].season_id;
 
   for (const m of materials) {
     await client.query(
@@ -195,10 +212,7 @@ async function insertProduct(client, orderId, input) {
        VALUES ($1, $2, $3)`,
       [productId, m.material_id, m.quantity_used]
     );
-    await client.query('UPDATE materials SET quantity = quantity - $1 WHERE id = $2', [
-      m.quantity_used,
-      m.material_id,
-    ]);
+    await adjustStock(client, seasonId, m.material_id, -m.quantity_used);
   }
   return productId;
 }
@@ -216,14 +230,24 @@ function addNeeds(needs, materials, sign = 1) {
   return needs;
 }
 
-async function assertTrayStock(db, needs) {
+async function assertTrayStock(db, needs, seasonId) {
   const ids = [...needs].filter(([, n]) => n > 0).map(([id]) => id);
   if (!ids.length) return;
+  // Make sure each stock row exists so it can be locked.
+  await db.query(
+    `INSERT INTO material_stock (season_id, material_id, quantity)
+     SELECT $1, unnest($2::int[]), 0
+     ON CONFLICT DO NOTHING`,
+    [seasonId, ids]
+  );
   const { rows } = await db.query(
-    `SELECT id, name, quantity FROM materials
-      WHERE id = ANY($1::int[]) AND is_limiting
-      ORDER BY id FOR UPDATE`,
-    [ids]
+    `SELECT m.id, m.name, s.quantity
+       FROM materials m
+       JOIN material_stock s ON s.material_id = m.id AND s.season_id = $2
+      WHERE m.id = ANY($1::int[]) AND m.is_limiting
+      ORDER BY m.id
+        FOR UPDATE OF s`,
+    [ids, seasonId]
   );
   const problems = rows
     .filter((r) => Number(r.quantity) - needs.get(r.id) < 0)
@@ -243,29 +267,31 @@ async function assertTrayStock(db, needs) {
   }
 }
 
-// Add back the stock a product's materials consumed.
+// Add back the stock a product's materials consumed (to its own season).
 async function restoreProductMaterials(client, productId) {
   const { rows } = await client.query(
-    'SELECT material_id, quantity_used FROM product_materials WHERE product_id = $1',
+    `SELECT pm.material_id, pm.quantity_used, o.season_id
+       FROM product_materials pm
+       JOIN products p ON p.id = pm.product_id
+       JOIN orders o ON o.id = p.order_id
+      WHERE pm.product_id = $1`,
     [productId]
   );
   for (const r of rows) {
-    await client.query('UPDATE materials SET quantity = quantity + $1 WHERE id = $2', [
-      Number(r.quantity_used),
-      r.material_id,
-    ]);
+    await adjustStock(client, r.season_id, r.material_id, Number(r.quantity_used));
   }
 }
 
 async function fetchOrderFull(db, orderId) {
   const { rows: orders } = await db.query(
-    `SELECT o.*,
+    `SELECT o.*, s.name AS season_name, s.status AS season_status,
             (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id) AS product_count,
             (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id AND p.is_made) AS made_count,
             (SELECT COUNT(*) FROM products p WHERE p.order_id = o.id AND p.is_delivered) AS delivered_count,
             (SELECT COALESCE(SUM(p.price), 0) FROM products p WHERE p.order_id = o.id) AS total_price,
             (SELECT COALESCE(SUM(p.cost), 0) FROM products p WHERE p.order_id = o.id) AS total_cost
-       FROM orders o WHERE o.id = $1`,
+       FROM orders o LEFT JOIN seasons s ON s.id = o.season_id
+      WHERE o.id = $1`,
     [orderId]
   );
   if (!orders.length) return null;
@@ -294,4 +320,5 @@ module.exports = {
   fetchOrderFull,
   addNeeds,
   assertTrayStock,
+  adjustStock,
 };

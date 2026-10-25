@@ -4,6 +4,7 @@ import { money, suggestedCostOf, qtyOf } from '../util';
 import MaterialPicker from './MaterialPicker';
 import AnchorChip from './AnchorChip';
 import InventoryBadge from './InventoryBadge';
+import { useSeason } from '../season';
 
 const COLUMNS = [
   { key: 'name', label: 'Name' },
@@ -32,6 +33,7 @@ function presetToDraft(p) {
 }
 
 export default function Premade() {
+  const { current, readOnly } = useSeason();
   const [presets, setPresets] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [query, setQuery] = useState('');
@@ -153,12 +155,19 @@ export default function Premade() {
         (set on the Materials tab); presets sharing a tray show the same number.
       </p>
 
-      <button
-        className="primary"
-        onClick={() => setEditing({ draft: emptyDraft() })}
-      >
-        + New preset
-      </button>
+      <p className="hint">
+        Presets are shared by every season; Inventory shows trays left in{' '}
+        <strong>{current.name}</strong>.
+      </p>
+
+      {!readOnly && (
+        <button
+          className="primary"
+          onClick={() => setEditing({ draft: emptyDraft() })}
+        >
+          + New preset
+        </button>
+      )}
 
       {error && <div className="error">{error}</div>}
 
@@ -180,7 +189,9 @@ export default function Premade() {
             {rows.map((p) => (
               <tr
                 key={p.id}
-                onClick={() => setEditing({ preset: p, draft: presetToDraft(p) })}
+                onClick={() =>
+                  !readOnly && setEditing({ preset: p, draft: presetToDraft(p) })
+                }
               >
                 <td>{p.name}</td>
                 <td>{money(p.cost)}</td>
@@ -197,15 +208,17 @@ export default function Premade() {
                     : '—'}
                 </td>
                 <td className="right">
-                  <button
-                    className="danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(p);
-                    }}
-                  >
-                    Delete
-                  </button>
+                  {!readOnly && (
+                    <button
+                      className="danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(p);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

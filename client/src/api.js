@@ -1,9 +1,18 @@
 const BASE = '/api';
 
+// Which season every request is about (and whether that closed season has
+// been unlocked for editing). Set by the SeasonProvider.
+let seasonHeaders = {};
+export function setApiSeason(id, unlocked) {
+  seasonHeaders = id
+    ? { 'X-Season-Id': String(id), ...(unlocked ? { 'X-Season-Unlock': String(id) } : {}) }
+    : {};
+}
+
 async function request(path, options = {}) {
   const res = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: { 'Content-Type': 'application/json', ...seasonHeaders },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -7,6 +7,7 @@ import {
   groupProductRows,
 } from '../util';
 import FilterPanel from './FilterPanel';
+import { useSeason, seasonSlug } from '../season';
 import BarGraph from './BarGraph';
 import {
   computeExtraStats,
@@ -230,6 +231,7 @@ function BreakdownTable({ title, rows }) {
 }
 
 export default function Financials() {
+  const { current } = useSeason();
   const [products, setProducts] = useState(null);
   const [locations, setLocations] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -350,7 +352,9 @@ export default function Financials() {
     const card = (label, value, csv) => ({ label, value, csv });
 
     return {
-      title: 'Purim Platform — Financials',
+      title: `Purim Platform — Financials · ${current.name}`,
+      season: current.name,
+      fileSlug: seasonSlug(current),
       generated: new Date(),
       filters: activeFilters,
       cardGroups: [
@@ -559,8 +563,8 @@ export default function Financials() {
         </div>
       </div>
       <p className="subtle">
-        Live totals from every product. Filters below apply to everything on this
-        tab.
+        Live totals for every product in <strong>{current.name}</strong>. Filters
+        below apply to everything on this tab.
       </p>
 
       <FilterPanel

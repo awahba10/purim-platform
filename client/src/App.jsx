@@ -11,13 +11,25 @@ import Products from './components/Products';
 import Production from './components/Production';
 import Financials from './components/Financials';
 import { NAV } from './nav';
+import { SeasonProvider, useSeason } from './season';
+import SeasonBar from './components/SeasonBar';
+
+// Re-mounts every page when the season changes, so each tab reloads that
+// season's data (and its own filters start fresh).
+function SeasonPages({ children }) {
+  const { current } = useSeason();
+  return <div key={current.id}>{children}</div>;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
+      <SeasonProvider>
       <div className="layout">
         <Sidebar nav={NAV} />
         <main className="content">
+          <SeasonBar />
+          <SeasonPages>
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<Home />} />
@@ -35,8 +47,10 @@ export default function App() {
             <Route path="/financials" element={<Financials />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
+          </SeasonPages>
         </main>
       </div>
+      </SeasonProvider>
     </BrowserRouter>
   );
 }

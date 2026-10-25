@@ -180,6 +180,7 @@ export function exportReportCsv(report) {
     report.title,
     [{ label: 'Item', get: (r) => r[0] }, { label: 'Value', get: (r) => r[1] }],
     [
+      ['Season', report.season || ''],
       ['Generated', report.generated.toLocaleString()],
       [
         'Active filters',
@@ -206,7 +207,10 @@ export function exportReportCsv(report) {
     );
   }
 
-  downloadCSV(`purim-financials-${dayKey(report.generated)}.csv`, blocks.join('\r\n\r\n'));
+  downloadCSV(
+    `purim-financials-${report.fileSlug || 'season'}-${dayKey(report.generated)}.csv`,
+    blocks.join('\r\n\r\n')
+  );
 }
 
 // Standard PDF fonts only cover Latin-1 + a few typographic marks.
@@ -261,7 +265,11 @@ export function exportReportPdf(report) {
   doc.text(clean(report.title), M, y + 16);
   y += 26;
   font(9, 'normal', MUTED);
-  doc.text(clean(`Generated ${report.generated.toLocaleString()}`), M, y + 8);
+  doc.text(
+    clean(`Season: ${report.season || '—'}   ·   Generated ${report.generated.toLocaleString()}`),
+    M,
+    y + 8
+  );
   y += 18;
   font(10, 'bold');
   doc.text('Active filters', M, y + 8);
@@ -394,5 +402,5 @@ export function exportReportPdf(report) {
     doc.text(`Page ${i} of ${pages}`, PW - M, PH - M + 10, { align: 'right' });
   }
 
-  doc.save(`purim-financials-${dayKey(report.generated)}.pdf`);
+  doc.save(`purim-financials-${report.fileSlug || 'season'}-${dayKey(report.generated)}.pdf`);
 }

@@ -1,6 +1,18 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { toProduct, withMaterials } = require('../lib/products');
+const { assertWritable, seasonOfBatch } = require('../lib/seasons');
+
+// Writes to a batch follow the batch's own season (a shared link may point at
+// a batch from a season other than the one being viewed).
+async function writableBatch(req, id) {
+  const season = await seasonOfBatch(pool, id);
+  if (!season) {
+    throw Object.assign(new Error('Batch not found'), { status: 404 });
+  }
+  assertWritable(req, season);
+  return season;
+}
 
 const toBatch = (b) => ({
   ...b,
@@ -24,7 +36,12 @@ async function batchProducts(db, batchId) {
 }
 
 async function fetchBatch(db, id) {
-  const { rows } = await db.query('SELECT * FROM batches WHERE id = $1', [id]);
+  const { rows } = await db.query(
+    `SELECT b.*, s.name AS season_name, s.status AS season_status
+       FROM batches b LEFT JOIN seasons s ON s.id = b.season_id
+      WHERE b.id = $1`,
+    [id]
+  );
   if (!rows.length) return null;
   return { ...rows[0], products: await batchProducts(db, id) };
 }
@@ -32,6 +49,19 @@ async function fetchBatch(db, id) {
 async function appendProducts(client, batchId, productIds) {
   const ids = (productIds || []).map(Number).filter(Boolean);
   if (!ids.length) return;
+  // Products may only join a batch from their own season.
+  const { rows: bad } = await client.query(
+    `SELECT p.id FROM products p
+       JOIN orders o ON o.id = p.order_id
+       JOIN batches b ON b.id = $1
+      WHERE p.id = ANY($2::int[]) AND o.season_id IS DISTINCT FROM b.season_id`,
+    [batchId, ids]
+  );
+  if (bad.length) {
+    throw Object.assign(new Error('Some products belong to a different season.'), {
+      status: 400,
+    });
+  }
   const { rows: mx } = await client.query(
     'SELECT COALESCE(MAX(batch_position) + 1, 0) AS pos FROM products WHERE batch_id = $1',
     [batchId]
@@ -54,8 +84,10 @@ router.get('/', async (req, res, next) => {
               COUNT(p.id) FILTER (WHERE p.is_delivered) AS delivered_count
          FROM batches b
          LEFT JOIN products p ON p.batch_id = b.id
+        WHERE b.season_id = $1
         GROUP BY b.id
-        ORDER BY b.created_at DESC`
+        ORDER BY b.created_at DESC`,
+      [req.season.id]
     );
     res.json(rows.map(toBatch));
   } catch (err) {
@@ -82,10 +114,11 @@ router.post('/', async (req, res, next) => {
   }
   const client = await pool.connect();
   try {
+    assertWritable(req, req.season);
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'INSERT INTO batches (name) VALUES ($1) RETURNING id',
-      [name.trim()]
+      'INSERT INTO batches (name, season_id) VALUES ($1, $2) RETURNING id',
+      [name.trim(), req.season.id]
     );
     await appendProducts(client, rows[0].id, product_ids);
     await client.query('COMMIT');
@@ -105,6 +138,7 @@ router.patch('/:id', async (req, res, next) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Batch name is required' });
     }
+    await writableBatch(req, req.params.id);
     const { rows } = await pool.query(
       'UPDATE batches SET name = $1 WHERE id = $2 RETURNING id',
       [name.trim(), req.params.id]
@@ -119,6 +153,7 @@ router.patch('/:id', async (req, res, next) => {
 // Delete a batch (its products fall back to no batch).
 router.delete('/:id', async (req, res, next) => {
   try {
+    await writableBatch(req, req.params.id);
     await pool.query('DELETE FROM batches WHERE id = $1', [req.params.id]);
     res.status(204).end();
   } catch (err) {
@@ -130,6 +165,7 @@ router.delete('/:id', async (req, res, next) => {
 router.post('/:id/products', async (req, res, next) => {
   const client = await pool.connect();
   try {
+    await writableBatch(req, req.params.id);
     await client.query('BEGIN');
     const { rows } = await client.query('SELECT id FROM batches WHERE id = $1', [
       req.params.id,
@@ -152,6 +188,7 @@ router.post('/:id/products', async (req, res, next) => {
 // Remove one product from a batch.
 router.delete('/:id/products/:productId', async (req, res, next) => {
   try {
+    await writableBatch(req, req.params.id);
     await pool.query(
       'UPDATE products SET batch_id = NULL WHERE id = $1 AND batch_id = $2',
       [req.params.productId, req.params.id]
@@ -167,6 +204,7 @@ router.patch('/:id/order', async (req, res, next) => {
   const ids = (req.body.product_ids || []).map(Number).filter(Boolean);
   const client = await pool.connect();
   try {
+    await writableBatch(req, req.params.id);
     await client.query('BEGIN');
     for (let idx = 0; idx < ids.length; idx++) {
       await client.query(

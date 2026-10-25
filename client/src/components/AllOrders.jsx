@@ -16,6 +16,7 @@ import {
 import OrderDetail from './OrderDetail';
 import FilterPanel from './FilterPanel';
 import PaymentMethodPicker from './PaymentMethodPicker';
+import { useSeason, seasonSlug } from '../season';
 
 const PRODUCTION_MAP = {
   'Not Made': 'None Made',
@@ -76,6 +77,8 @@ function payClass(status) {
 export default function AllOrders() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { current, readOnly } = useSeason();
+  const seasonCols = [{ label: 'Season', get: () => current.name }, ...CSV_COLUMNS];
   const selectedId = /^\d+$/.test(id || '') ? Number(id) : null;
   const [orders, setOrders] = useState([]);
   const [query, setQuery] = useState('');
@@ -268,14 +271,14 @@ export default function AllOrders() {
 
   const exportSelectedCsv = () =>
     downloadCSV(
-      `purim-orders-selected-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCSV(selectedOrders, CSV_COLUMNS)
+      `purim-orders-${seasonSlug(current)}-selected-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(selectedOrders, seasonCols)
     );
 
   const exportCsv = () => {
     downloadCSV(
-      `purim-orders-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCSV(orders, CSV_COLUMNS)
+      `purim-orders-${seasonSlug(current)}-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(orders, seasonCols)
     );
   };
 
@@ -314,6 +317,8 @@ export default function AllOrders() {
       {selectMode && selected.size > 0 && (
         <div className="action-bar">
           <span>{selected.size} selected</span>
+          {!readOnly && (
+          <>
           <button disabled={busy} onClick={() => bulkUpdate({ payment_status: 'Paid' })}>
             Mark Paid
           </button>
@@ -335,10 +340,14 @@ export default function AllOrders() {
           >
             Set Payment Method
           </button>
+          </>
+          )}
           <button onClick={exportSelectedCsv}>Export CSV</button>
-          <button className="danger" onClick={bulkDelete} disabled={busy}>
-            Delete
-          </button>
+          {!readOnly && (
+            <button className="danger" onClick={bulkDelete} disabled={busy}>
+              Delete
+            </button>
+          )}
           <button onClick={exitSelect}>Cancel</button>
         </div>
       )}

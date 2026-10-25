@@ -14,9 +14,11 @@ import {
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
+import { useSeason } from '../season';
 
 export default function NewOrder() {
   const navigate = useNavigate();
+  const { current, active, readOnly, unlocked } = useSeason();
   const [materials, setMaterials] = useState([]);
   const [presets, setPresets] = useState([]);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
@@ -104,10 +106,35 @@ export default function NewOrder() {
     }
   };
 
+  if (readOnly) {
+    return (
+      <div className="panel">
+        <h1>New Order</h1>
+        <div className="locked-msg">
+          <p>
+            <strong>{current.name}</strong> is a closed season, so New Order is turned
+            off while you're viewing it.
+          </p>
+          <p className="subtle">
+            To add an order to it anyway, use <strong>Unlock to edit</strong> in the
+            banner above.
+            {active && active.id !== current.id
+              ? ` To take new orders, switch to the active season (${active.name}) with the season menu at the top.`
+              : ''}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="panel">
       <h1>New Order</h1>
-      <p className="subtle">A ticket number is assigned automatically when you submit.</p>
+      <p className="subtle">
+        A ticket number is assigned automatically when you submit. This order goes
+        into <strong>{current.name}</strong>
+        {unlocked ? ' (a closed season you unlocked)' : ''}.
+      </p>
 
       <form onSubmit={submit} className="form form-wide">
         <div className="section-label">Customer</div>

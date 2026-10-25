@@ -3,6 +3,7 @@ import { api } from '../api';
 import { buildMapsRouteUrl, copyText } from '../util';
 import BatchChip from './BatchChip';
 import ShareButton from './ShareButton';
+import { useSeason } from '../season';
 
 const coarsePointer =
   typeof window !== 'undefined' &&
@@ -10,6 +11,7 @@ const coarsePointer =
   window.matchMedia('(pointer: coarse)').matches;
 
 export default function BatchDetail({ id, onBack, onChanged }) {
+  const { current, readOnly, switchTo } = useSeason();
   const [batch, setBatch] = useState(null);
   const [batches, setBatches] = useState([]);
   const [error, setError] = useState('');
@@ -36,6 +38,12 @@ export default function BatchDetail({ id, onBack, onChanged }) {
   const load = () =>
     Promise.all([api.get(`/batches/${id}`), api.get('/batches')])
       .then(([b, list]) => {
+        // A shared link to a batch from another season switches the app to
+        // that season (and its lock state).
+        if (b.season_id && b.season_id !== current.id) {
+          switchTo(b.season_id);
+          return;
+        }
         setBatch(b);
         setBatches(list);
         setNameDraft(b.name);
@@ -296,9 +304,11 @@ export default function BatchDetail({ id, onBack, onChanged }) {
             ) : (
               <h1>
                 {batch.name}{' '}
-                <button className="btn-sm" onClick={() => setRenaming(true)}>
-                  Rename
-                </button>
+                {!readOnly && (
+                  <button className="btn-sm" onClick={() => setRenaming(true)}>
+                    Rename
+                  </button>
+                )}
               </h1>
             )}
             <span className="ph-actions">
@@ -322,10 +332,12 @@ export default function BatchDetail({ id, onBack, onChanged }) {
           </div>
 
           <p className="subtle">
+            <span className="season-tag">{batch.season_name}</span> ·{' '}
             {batch.products.length} product
-            {batch.products.length === 1 ? '' : 's'} · drag a row (long-press on a
-            touchscreen) or use ▲ ▼ to set the delivery order. Product details are
-            read-only here.
+            {batch.products.length === 1 ? '' : 's'}
+            {readOnly
+              ? ' · view only — this season is locked.'
+              : ' · drag a row (long-press on a touchscreen) or use ▲ ▼ to set the delivery order. Product details are read-only here.'}
           </p>
 
           {batch.products.length === 0 && (
@@ -353,23 +365,23 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                       (dragId === p.id ? ' dragging' : '') +
                       (touchDragging && dragId === p.id ? ' lifted' : '')
                     }
-                    draggable={!coarsePointer}
-                    onDragStart={(e) => onRowDragStart(e, p.id)}
-                    onDragOver={(e) => onRowDragOver(e, idx)}
-                    onDrop={onRowDrop}
-                    onDragEnd={endDrag}
-                    onTouchStart={(e) => onRowTouchStart(e, p.id)}
+                    draggable={!coarsePointer && !readOnly}
+                    onDragStart={readOnly ? undefined : (e) => onRowDragStart(e, p.id)}
+                    onDragOver={readOnly ? undefined : (e) => onRowDragOver(e, idx)}
+                    onDrop={readOnly ? undefined : onRowDrop}
+                    onDragEnd={readOnly ? undefined : endDrag}
+                    onTouchStart={readOnly ? undefined : (e) => onRowTouchStart(e, p.id)}
                   >
                     <span className="batch-move">
                       <button
-                        disabled={busy || idx === 0}
+                        disabled={busy || readOnly || idx === 0}
                         onClick={() => move(idx, -1)}
                         aria-label="Move up"
                       >
                         ▲
                       </button>
                       <button
-                        disabled={busy || idx === batch.products.length - 1}
+                        disabled={busy || readOnly || idx === batch.products.length - 1}
                         onClick={() => move(idx, 1)}
                         aria-label="Move down"
                       >
@@ -381,7 +393,7 @@ export default function BatchDetail({ id, onBack, onChanged }) {
 
                     <button
                       className={'made-toggle ' + (p.is_delivered ? 'on' : 'off')}
-                      disabled={busy}
+                      disabled={busy || readOnly}
                       onClick={() => toggleDelivered(p)}
                     >
                       {p.is_delivered ? 'Delivered' : 'Not delivered'}
@@ -423,17 +435,19 @@ export default function BatchDetail({ id, onBack, onChanged }) {
                         value={p.batch_id}
                         currentName={p.batch_name}
                         batches={batches}
-                        disabled={busy}
+                        disabled={busy || readOnly}
                         onAssign={(bid) => moveToBatch(p, bid)}
                         onCreateAssign={() => createBatchFor(p)}
                         onRemove={() => removeFromBatch(p)}
                       />
-                      <button
-                        className="danger"
-                        onClick={() => removeFromBatch(p)}
-                      >
-                        ✕
-                      </button>
+                      {!readOnly && (
+                        <button
+                          className="danger"
+                          onClick={() => removeFromBatch(p)}
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
                 </Fragment>

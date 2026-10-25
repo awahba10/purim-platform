@@ -17,6 +17,35 @@ Ten tabs down the left side (the sidebar is always visible):
 | **Delivery Batches** | Group products into a delivery run. The overview lists every batch (each row has a **Share** button). Inside a batch, each product is a one-line card (the whole card scrolls sideways as one unit on a phone): ▲ ▼ move / drag, position number, Delivered toggle, **address (bold — tap it to copy)**, product name, ticket, delivery instructions ("No instructions" if none), then a batch chip (reassign) and an ✕ to drop it from the batch. Reorder by dragging (long-press first on a touchscreen) with a live drop-position line, by ▲ ▼, or both. Materials aren't shown here. **Open Route in Maps** builds one Google Maps multi-stop directions link with every address in the current order; **Share** sends the batch's link (native share sheet on mobile, copy-to-clipboard on desktop). |
 | **Financials** | Computed live from every product. A collapsible **Filters** panel (Product Name, Pickup/Delivery, Location) applies to the whole tab. Summary cards: total orders, total products sold, **total delivery income**, average order value, profit margin %, average products per order, revenue (paid / not paid / total), profit (paid / not paid / total). Below: **By Product** and **By Location** breakdown tables; bar graphs **Orders by Product Name** and **Orders by Location** (Count / Revenue / Profit toggle), **Orders by Price Point** ($10 ranges, built from the data; a boundary price goes in the higher range), **Revenue by Payment Method** ("Not set" when blank), **Orders by Day**; **Sell-through** — a **Total Sell-through** summary across all trays, then one row per limiting tray (sold / starting, %, remaining, products sold on it — sold = starting − current stock, so it's overall, not filtered); **Top Customers** (2+ orders, matched by name + phone). **Export CSV** / **Export PDF** (top right) reflect the active filters; the PDF lists the filters and includes cards, tables and charts. Nothing to type here. |
 
+### Seasons
+
+Everything is saved by season (e.g. "Purim 2027"). A season is **Active** or
+**Closed**; only one is Active at a time.
+
+- **Per season:** orders and their products, delivery batches, ticket numbers
+  (restart at T-0001 each season), label-printed flags, all financials, and
+  material stock counts (incl. each tray's starting quantity).
+- **Shared by all seasons:** the materials list (names, costs, Limiting flag),
+  premade products (incl. anchor tray), Delivery Cost locations, and label
+  sheet settings. Products keep their own saved cost and price, so past
+  financials never change.
+- **Switcher:** the season chip at the top of every page lists all seasons and
+  switches the whole app. The app opens on the newest Active season; a choice
+  made with the switcher is remembered for that browser tab (refreshes and
+  navigation keep it).
+- **New Season…** (in the switcher) asks for a name, closes the Active season,
+  and starts an empty one with all stock at 0.
+- **Closed seasons are read-only**, enforced by the server: a banner offers
+  **Unlock to edit** (until you switch seasons, reload, or click **Lock
+  again**) and **Reopen as active season**. Viewing, filtering and exports
+  still work. New Order is off while a closed season is locked. Materials used
+  by a past season's products can't be deleted.
+- Shared batch links open that batch's season (view-only if it's locked).
+  Exports (CSV, PDF, labels) carry the season name in the file name / header.
+- **Migration:** on the first start after seasons were added, every existing
+  order, product, batch and stock count was assigned to "Purim 2027" (nothing
+  deleted or renumbered). The counts check is saved at `/api/seasons/migration`.
+
 ### Filters
 
 Products, All Orders, and Financials share one collapsible **Filters** panel. Each

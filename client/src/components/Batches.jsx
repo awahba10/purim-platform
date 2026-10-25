@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import BatchDetail from './BatchDetail';
 import ShareButton from './ShareButton';
+import { useSeason } from '../season';
 
 export default function Batches() {
   const navigate = useNavigate();
   const { id } = useParams();
   const batchId = /^\d+$/.test(id || '') ? Number(id) : null;
+  const { readOnly } = useSeason();
   const [batches, setBatches] = useState([]);
   const [error, setError] = useState('');
 
@@ -60,9 +62,11 @@ export default function Batches() {
     <div className="panel">
       <div className="panel-head">
         <h1>Delivery Batches</h1>
-        <button className="primary" onClick={create}>
-          + New batch
-        </button>
+        {!readOnly && (
+          <button className="primary" onClick={create}>
+            + New batch
+          </button>
+        )}
       </div>
       <p className="subtle">
         Group products into a delivery run, set their order, and open the whole
@@ -95,9 +99,11 @@ export default function Batches() {
                     path={`/batches/${b.id}`}
                     title={`Delivery batch: ${b.name}`}
                   />
-                  <button className="danger" onClick={() => remove(b)}>
-                    Delete
-                  </button>
+                  {!readOnly && (
+                    <button className="danger" onClick={() => remove(b)}>
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

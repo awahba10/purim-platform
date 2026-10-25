@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { money } from '../util';
+import { useSeason } from '../season';
 
 function LocationRow({ item, onChanged, onError }) {
+  const { readOnly } = useSeason();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
   const [cost, setCost] = useState(item.cost);
@@ -46,10 +48,14 @@ function LocationRow({ item, onChanged, onError }) {
         <td>{item.name}</td>
         <td>{money(item.cost)}</td>
         <td className="right">
-          <button onClick={() => setEditing(true)}>Edit</button>
-          <button className="danger" onClick={remove}>
-            Delete
-          </button>
+          {!readOnly && (
+            <>
+              <button onClick={() => setEditing(true)}>Edit</button>
+              <button className="danger" onClick={remove}>
+                Delete
+              </button>
+            </>
+          )}
         </td>
       </tr>
     );
@@ -80,6 +86,7 @@ function LocationRow({ item, onChanged, onError }) {
 }
 
 export default function DeliveryCost() {
+  const { readOnly } = useSeason();
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState({ name: '', cost: '' });
@@ -117,6 +124,7 @@ export default function DeliveryCost() {
         and the delivery charge is chosen manually each time.
       </p>
 
+      {!readOnly && (
       <form className="add-bar" onSubmit={add}>
         <input
           placeholder="New location name"
@@ -132,6 +140,7 @@ export default function DeliveryCost() {
         />
         <button className="primary">+ Add location</button>
       </form>
+      )}
 
       {error && <div className="error">{error}</div>}
 

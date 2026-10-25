@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { money } from '../util';
+import { useSeason } from '../season';
 
 // Current stock. Zero or below shows in red with a small chip: trays are
 // "Sold out" (they never go negative); regular materials say "Need to buy".
@@ -53,6 +54,7 @@ function MaterialTable({ title, hint, items, onChanged, onError, empty }) {
 }
 
 function MaterialRow({ item, onChanged, onError }) {
+  const { readOnly } = useSeason();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
   const [qty, setQty] = useState(item.quantity);
@@ -123,10 +125,14 @@ function MaterialRow({ item, onChanged, onError }) {
         <td>{item.is_limiting ? item.starting_quantity ?? '—' : '—'}</td>
         <td>{money(item.cost)}</td>
         <td className="right">
-          <button onClick={() => setEditing(true)}>Edit</button>
-          <button className="danger" onClick={remove}>
-            Delete
-          </button>
+          {!readOnly && (
+            <>
+              <button onClick={() => setEditing(true)}>Edit</button>
+              <button className="danger" onClick={remove}>
+                Delete
+              </button>
+            </>
+          )}
         </td>
       </tr>
     );
@@ -188,6 +194,7 @@ function MaterialRow({ item, onChanged, onError }) {
 }
 
 export default function Materials() {
+  const { current, readOnly } = useSeason();
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
   const emptyDraft = { name: '', quantity: '', cost: '', is_limiting: false, starting_quantity: '' };
@@ -236,6 +243,12 @@ export default function Materials() {
         (how many you bought) drives sell-through on Financials.
       </p>
 
+      <p className="hint">
+        Stock counts and starting quantities shown are for <strong>{current.name}</strong>.
+        Names, costs and the Limiting flag are shared by every season.
+      </p>
+
+      {!readOnly && (
       <form className="add-bar" onSubmit={add}>
         <input
           placeholder="New material name"
@@ -277,6 +290,7 @@ export default function Materials() {
         )}
         <button className="primary">+ Add material</button>
       </form>
+      )}
 
       {error && <div className="error">{error}</div>}
 

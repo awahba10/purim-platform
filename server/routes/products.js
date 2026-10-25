@@ -8,6 +8,7 @@ const {
   addNeeds,
   assertTrayStock,
 } = require('../lib/products');
+const { assertWritable, seasonOfProduct, seasonOfBatch } = require('../lib/seasons');
 
 const SELECT_PRODUCT = `
   SELECT p.*, o.ticket_number, o.customer_name, o.payment_status,
@@ -22,7 +23,8 @@ const SELECT_PRODUCT = `
 router.get('/', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `${SELECT_PRODUCT} ORDER BY o.created_at DESC, p.id`
+      `${SELECT_PRODUCT} WHERE o.season_id = $1 ORDER BY o.created_at DESC, p.id`,
+      [req.season.id]
     );
     const withMats = await withMaterials(pool, rows);
     res.json(withMats.map(toProduct));
@@ -36,6 +38,9 @@ router.patch('/:id', async (req, res, next) => {
   const f = req.body;
   const client = await pool.connect();
   try {
+    const season = await seasonOfProduct(pool, req.params.id);
+    if (!season) return res.status(404).json({ error: 'Product not found' });
+    assertWritable(req, season);
     await client.query('BEGIN');
     const { rows: cur } = await client.query(
       'SELECT * FROM products WHERE id = $1 FOR UPDATE',
@@ -96,6 +101,14 @@ router.patch('/:id', async (req, res, next) => {
     if (f.is_delivered !== undefined) put('is_delivered', Boolean(f.is_delivered));
     if (f.batch_id !== undefined) {
       const target = f.batch_id === null || f.batch_id === '' ? null : Number(f.batch_id);
+      if (target != null) {
+        const bs = await seasonOfBatch(client, target);
+        if (!bs || bs.id !== season.id) {
+          throw Object.assign(new Error('That batch belongs to a different season.'), {
+            status: 400,
+          });
+        }
+      }
       put('batch_id', target);
       if (target != null) {
         const { rows: mx } = await client.query(
@@ -121,7 +134,7 @@ router.patch('/:id', async (req, res, next) => {
       );
       const needs = addNeeds(new Map(), f.materials);
       addNeeds(needs, old, -1);
-      await assertTrayStock(client, needs);
+      await assertTrayStock(client, needs, season.id);
       await restoreProductMaterials(client, req.params.id);
       await client.query('DELETE FROM product_materials WHERE product_id = $1', [
         req.params.id,
@@ -158,6 +171,9 @@ router.patch('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   const client = await pool.connect();
   try {
+    const season = await seasonOfProduct(pool, req.params.id);
+    if (!season) return res.status(404).json({ error: 'Product not found' });
+    assertWritable(req, season);
     await client.query('BEGIN');
     await restoreProductMaterials(client, req.params.id);
     await client.query('DELETE FROM products WHERE id = $1', [req.params.id]);

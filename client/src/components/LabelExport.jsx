@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { generateLabelPdf, slotsPerSheet, labelRecipient } from '../labels';
 
-export default function LabelExport({ kind, products, template, onClose, onExported }) {
+export default function LabelExport({
+  kind,
+  products,
+  template,
+  onClose,
+  onExported,
+  seasonName,
+}) {
   const [step, setStep] = useState('grid'); // grid | confirm
   const [startSlot, setStartSlot] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -28,7 +35,7 @@ export default function LabelExport({ kind, products, template, onClose, onExpor
     setBusy(true);
     setError('');
     try {
-      await generateLabelPdf({ kind, products, template, startSlot });
+      await generateLabelPdf({ kind, products, template, startSlot, seasonName });
       if (onExported) await onExported(products.map((p) => p.id));
       onClose();
     } catch (e) {

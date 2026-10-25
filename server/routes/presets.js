@@ -1,18 +1,21 @@
 const router = require('express').Router();
 const { pool } = require('../db');
 const { mapMaterials, cleanMaterials, attachMaterials } = require('../lib/products');
+const { assertWritable } = require('../lib/seasons');
 
 const LINK = { linkTable: 'preset_materials', fk: 'preset_id' };
 
-// Inventory is derived: the anchor tray's current stock. Only counts while the
-// anchor is still flagged as limiting stock; otherwise the preset has no anchor.
+// Inventory is derived: the anchor tray's stock in the season being viewed
+// ($1). Only counts while the anchor is still flagged as limiting stock;
+// otherwise the preset has no anchor. Presets themselves are shared.
 const SELECT_PRESET = `
   SELECT ps.*,
          CASE WHEN am.is_limiting THEN ps.anchor_material_id END AS anchor_id,
          CASE WHEN am.is_limiting THEN am.name END AS anchor_name,
-         CASE WHEN am.is_limiting THEN am.quantity END AS anchor_quantity
+         CASE WHEN am.is_limiting THEN COALESCE(st.quantity, 0) END AS anchor_quantity
     FROM presets ps
     LEFT JOIN materials am ON am.id = ps.anchor_material_id
+    LEFT JOIN material_stock st ON st.material_id = am.id AND st.season_id = $1
 `;
 
 const toPreset = (p) => {
@@ -55,8 +58,8 @@ function withAnchor(materials, anchorId) {
   return list;
 }
 
-async function fetchPreset(db, id) {
-  const { rows } = await db.query(`${SELECT_PRESET} WHERE ps.id = $1`, [id]);
+async function fetchPreset(db, seasonId, id) {
+  const { rows } = await db.query(`${SELECT_PRESET} WHERE ps.id = $2`, [seasonId, id]);
   if (!rows.length) return null;
   const withMats = await attachMaterials(db, rows, LINK);
   return toPreset(withMats[0]);
@@ -76,7 +79,7 @@ async function replaceLinks(client, presetId, materials) {
 // LIST every preset with its materials and computed cost.
 router.get('/', async (req, res, next) => {
   try {
-    const { rows } = await pool.query(`${SELECT_PRESET} ORDER BY ps.name`);
+    const { rows } = await pool.query(`${SELECT_PRESET} ORDER BY ps.name`, [req.season.id]);
     const withMats = await attachMaterials(pool, rows, LINK);
     res.json(withMats.map(toPreset));
   } catch (err) {
@@ -92,6 +95,7 @@ router.post('/', async (req, res, next) => {
   }
   const client = await pool.connect();
   try {
+    assertWritable(req, req.season);
     await client.query('BEGIN');
     const anchorId = (await cleanAnchor(client, req.body.anchor_material_id)) || null;
     const { rows } = await client.query(
@@ -100,7 +104,7 @@ router.post('/', async (req, res, next) => {
     );
     await replaceLinks(client, rows[0].id, withAnchor(materials, anchorId));
     await client.query('COMMIT');
-    res.status(201).json(await fetchPreset(pool, rows[0].id));
+    res.status(201).json(await fetchPreset(pool, req.season.id, rows[0].id));
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
@@ -114,6 +118,7 @@ router.patch('/:id', async (req, res, next) => {
   const { name, price, materials } = req.body;
   const client = await pool.connect();
   try {
+    assertWritable(req, req.season);
     await client.query('BEGIN');
     const { rows } = await client.query('SELECT id FROM presets WHERE id = $1', [
       req.params.id,
@@ -150,7 +155,7 @@ router.patch('/:id', async (req, res, next) => {
       await replaceLinks(client, req.params.id, withAnchor(materials, anchorId));
     }
     await client.query('COMMIT');
-    res.json(await fetchPreset(pool, req.params.id));
+    res.json(await fetchPreset(pool, req.season.id, req.params.id));
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
@@ -162,6 +167,7 @@ router.patch('/:id', async (req, res, next) => {
 // DELETE a preset (links cascade).
 router.delete('/:id', async (req, res, next) => {
   try {
+    assertWritable(req, req.season);
     await pool.query('DELETE FROM presets WHERE id = $1', [req.params.id]);
     res.status(204).end();
   } catch (err) {

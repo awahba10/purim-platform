@@ -18,6 +18,7 @@ import LabelSettings from './LabelSettings';
 import CreateBatchModal from './CreateBatchModal';
 import BatchChip from './BatchChip';
 import FilterPanel from './FilterPanel';
+import { useSeason, seasonSlug } from '../season';
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
@@ -64,6 +65,7 @@ const CSV_COLUMNS = [
 ];
 
 export default function Products() {
+  const { current, readOnly } = useSeason();
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
@@ -216,6 +218,7 @@ export default function Products() {
 
   const rowClick = (p, e) => {
     if (!selectMode) {
+      if (readOnly) return; // locked season: nothing to edit
       setError('');
       setEditing({ product: p, draft: productToDraft(p) });
       return;
@@ -265,6 +268,11 @@ export default function Products() {
   };
 
   const markPrinted = async (ids, kind) => {
+    // A locked season stays untouched: labels download, flags don't change.
+    if (readOnly) {
+      exitSelect();
+      return;
+    }
     const field = kind === 'gift' ? 'gift_label_printed' : 'shipping_label_printed';
     for (const id of ids) await api.patch(`/products/${id}`, { [field]: true });
     exitSelect();
@@ -327,8 +335,8 @@ export default function Products() {
 
   const exportCsv = () =>
     downloadCSV(
-      `purim-products-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCSV(products, CSV_COLUMNS)
+      `purim-products-${seasonSlug(current)}-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(products, [{ label: 'Season', get: () => current.name }, ...CSV_COLUMNS])
     );
 
   // The product's current trays count as available again while editing.
@@ -383,14 +391,16 @@ export default function Products() {
           >
             {selectMode ? 'Done' : 'Select'}
           </button>
-          <button
-            className="icon-btn gear"
-            title="Label settings"
-            aria-label="Label settings"
-            onClick={() => setShowSettings(true)}
-          >
-            ⚙
-          </button>
+          {!readOnly && (
+            <button
+              className="icon-btn gear"
+              title="Label settings"
+              aria-label="Label settings"
+              onClick={() => setShowSettings(true)}
+            >
+              ⚙
+            </button>
+          )}
           <button onClick={exportCsv} disabled={products.length === 0}>
             Export CSV
           </button>
@@ -420,16 +430,20 @@ export default function Products() {
       {selectMode && selected.size > 0 && (
         <div className="action-bar">
           <span>{selected.size} selected</span>
-          <button className="danger" onClick={bulkDelete} disabled={busy}>
-            Delete
-          </button>
+          {!readOnly && (
+            <button className="danger" onClick={bulkDelete} disabled={busy}>
+              Delete
+            </button>
+          )}
           <button onClick={() => startExport('gift')}>Export Gift Labels</button>
           <button onClick={() => startExport('shipping')}>
             Export Shipping Labels
           </button>
-          <button className="primary" onClick={() => setShowBatchModal(true)}>
-            Create Batch
-          </button>
+          {!readOnly && (
+            <button className="primary" onClick={() => setShowBatchModal(true)}>
+              Create Batch
+            </button>
+          )}
           <button onClick={() => setSelected(new Set())}>Clear</button>
         </div>
       )}
@@ -471,7 +485,7 @@ export default function Products() {
                 <td onClick={(e) => e.stopPropagation()}>
                   <button
                     className={'made-toggle ' + (p.is_made ? 'on' : 'off')}
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     onClick={() => toggleMade(p)}
                   >
                     {p.is_made ? 'Made' : 'Not made'}
@@ -489,7 +503,7 @@ export default function Products() {
                   <span className="label-flags">
                     <button
                       className={'flag ' + (p.gift_label_printed ? 'on' : 'off')}
-                      disabled={busy}
+                      disabled={busy || readOnly}
                       title={
                         p.gift_label_printed
                           ? 'Gift label printed — click to clear'
@@ -501,7 +515,7 @@ export default function Products() {
                     </button>
                     <button
                       className={'flag ' + (p.shipping_label_printed ? 'on' : 'off')}
-                      disabled={busy}
+                      disabled={busy || readOnly}
                       title={
                         p.shipping_label_printed
                           ? 'Shipping label printed — click to clear'
@@ -518,7 +532,7 @@ export default function Products() {
                     value={p.batch_id}
                     currentName={p.batch_name}
                     batches={batches}
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     onAssign={(bid) => setProductBatch(p, bid)}
                     onCreateAssign={() => createBatchFor(p)}
                     onRemove={() => setProductBatch(p, null)}
@@ -532,9 +546,11 @@ export default function Products() {
                     : '—'}
                 </td>
                 <td className="right" onClick={(e) => e.stopPropagation()}>
-                  <button className="danger" onClick={() => remove(p)}>
-                    Delete
-                  </button>
+                  {!readOnly && (
+                    <button className="danger" onClick={() => remove(p)}>
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -591,6 +607,7 @@ export default function Products() {
           template={templateFor(labelExport.kind)}
           onClose={() => setLabelExport(null)}
           onExported={(ids) => markPrinted(ids, labelExport.kind)}
+          seasonName={current.name}
         />
       )}
 

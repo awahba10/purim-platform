@@ -213,8 +213,19 @@ function drawGiftLabel(doc, x, y, w, h, p, img) {
 
 // Build the label PDF. `kind` is 'gift' | 'shipping'. `startSlot` is 0-based,
 // row-major; products flow from there and onto new sheets as needed.
-export async function generateLabelPdf({ kind, products, template: t, startSlot = 0 }) {
+export async function generateLabelPdf({
+  kind,
+  products,
+  template: t,
+  startSlot = 0,
+  seasonName = '',
+}) {
   const doc = new jsPDF({ unit: 'in', format: [t.page_w, t.page_h] });
+  // Nothing is printed outside the labels; the season goes in the file name
+  // and the PDF's title.
+  doc.setProperties({
+    title: `${seasonName ? seasonName + ' — ' : ''}${kind === 'gift' ? 'Gift' : 'Shipping'} labels`,
+  });
   const per = slotsPerSheet(t);
 
   let img = null;
@@ -238,5 +249,8 @@ export async function generateLabelPdf({ kind, products, template: t, startSlot 
   });
 
   const stamp = new Date().toISOString().slice(0, 10);
-  doc.save(`purim-${kind}-labels-${stamp}.pdf`);
+  const slug = seasonName
+    ? seasonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-'
+    : '';
+  doc.save(`purim-${slug}${kind}-labels-${stamp}.pdf`);
 }
