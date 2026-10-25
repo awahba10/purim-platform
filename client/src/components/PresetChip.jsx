@@ -62,11 +62,15 @@ export default function PresetChip({ presets, onPick, disabled }) {
           {(!presets || presets.length === 0) && (
             <div className="cm-empty">No premade products yet</div>
           )}
-          {(presets || []).map((p) => (
+          {(presets || []).map((p) => {
+            const soldOut = p.inventory != null && p.inventory <= 0;
+            return (
             <button
               key={p.id}
               type="button"
-              className={'cm-item' + (p.inventory != null && p.inventory <= 0 ? ' sold-out' : '')}
+              className={'cm-item' + (soldOut ? ' sold-out' : '')}
+              disabled={soldOut}
+              title={soldOut ? 'Sold out — no trays remaining' : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 setOpen(false);
@@ -80,7 +84,8 @@ export default function PresetChip({ presets, onPick, disabled }) {
                 </span>
               )}
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

@@ -32,10 +32,16 @@ export function computeExtraStats(summary) {
   };
 }
 
-// One row per distinct price, cheapest first. `lineItems` = products sold.
+// $10 price ranges, cheapest first. A boundary price goes in the higher range
+// ($20 -> $20–30). Only ranges with at least one product appear.
+// `lineItems` = products sold in the range.
 export function groupByPrice(list) {
-  return groupProductRows(list, (p) => (Number(p.price) || 0).toFixed(2))
-    .map((g) => ({ ...g, price: Number(g.label), label: money(g.label) }))
+  const lo = (p) => Math.floor((Number(p.price) || 0) / 10) * 10;
+  return groupProductRows(list, (p) => String(lo(p)))
+    .map((g) => {
+      const low = Number(g.label);
+      return { ...g, price: low, label: `$${low}–${low + 10}` };
+    })
     .sort((a, b) => a.price - b.price);
 }
 
@@ -92,6 +98,26 @@ export function sellThrough(list, trays) {
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// All trays with a starting quantity combined. productsSold = filtered
+// products using any tray (each product counted once).
+export function totalSellThrough(list, trays) {
+  const counted = trays.filter((t) => t.starting_quantity != null);
+  const start = counted.reduce((n, t) => n + Number(t.starting_quantity), 0);
+  const remaining = counted.reduce((n, t) => n + (Number(t.quantity) || 0), 0);
+  const sold = start - remaining;
+  const ids = new Set(trays.map((t) => t.id));
+  return {
+    trays: counted.length,
+    start,
+    remaining,
+    sold,
+    pct: start ? sold / start : null,
+    productsSold: list.filter((p) =>
+      (p.materials || []).some((m) => ids.has(m.material_id))
+    ).length,
+  };
 }
 
 // Customers with 2+ orders, matched on name + phone. Total spent includes

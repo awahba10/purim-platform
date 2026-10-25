@@ -302,10 +302,11 @@ export const methodBucket = (stored) => {
 
 // --- Limiting stock (trays) ---------------------------------------------------
 
-// Warnings for each product draft in an order, keyed by draft _key. For every
-// limiting-stock material a draft uses: sold out if none remain, or over the
-// limit if the whole order needs more than remain. Warn only, never block.
-export function trayWarnings(drafts, catalog) {
+// Blocking tray errors for each product draft, keyed by draft _key. For every
+// limiting-stock material the drafts use: sold out if none remain, or over the
+// limit if the drafts together need more than remain. Trays can never go below
+// zero (regular materials can, and are ignored here).
+export function trayErrors(drafts, catalog) {
   const limiting = {};
   for (const m of catalog) if (m.is_limiting) limiting[m.id] = m;
   const demand = {};
@@ -322,17 +323,27 @@ export function trayWarnings(drafts, catalog) {
     for (const m of d.materials) {
       const tray = limiting[m.material_id];
       if (!tray) continue;
-      const left = Number(tray.quantity) || 0;
+      const left = Math.max(0, Number(tray.quantity) || 0);
       const need = demand[m.material_id];
-      if (left <= 0) {
-        list.push(`Sold out: no ${tray.name} remaining. You can still add it.`);
-      } else if (need > left) {
-        list.push(
-          `Only ${left} ${tray.name} left — this order uses ${need}. You can still add it.`
-        );
-      }
+      if (need <= left) continue;
+      list.push(
+        left === 0
+          ? `Sold out: no ${tray.name} left. Remove it or pick another tray to continue.`
+          : `Only ${left} ${tray.name} left — this needs ${need}. Reduce the quantity to continue.`
+      );
     }
     if (list.length) out[d._key] = list;
   }
   return out;
+}
+
+// When editing a saved product, its own trays count as available again.
+export function catalogWithReturned(catalog, returned) {
+  const back = {};
+  for (const m of returned || []) {
+    back[m.material_id] = (back[m.material_id] || 0) + qtyOf(m.quantity_used);
+  }
+  return catalog.map((m) =>
+    back[m.id] ? { ...m, quantity: Number(m.quantity) + back[m.id] } : m
+  );
 }

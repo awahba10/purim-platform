@@ -14,6 +14,7 @@ import {
   groupByMethod,
   groupByDay,
   sellThrough,
+  totalSellThrough,
   topCustomers,
   pctText,
   exportReportCsv,
@@ -57,8 +58,8 @@ function SimpleTable({ columns, rows, empty = 'No data for the current filters.'
   );
 }
 
-// One bar per tray: sold out of starting quantity.
-function SellThrough({ rows, filtered }) {
+// One bar per tray: sold out of starting quantity, with a combined total first.
+function SellThrough({ rows, total, filtered }) {
   return (
     <div className="bargraph">
       <div className="bg-head">
@@ -71,6 +72,34 @@ function SellThrough({ rows, filtered }) {
         </p>
       ) : (
         <>
+          <div className="st-total">
+            <div className="st-top">
+              <strong>Total Sell-through</strong>
+              <span>
+                {total.start
+                  ? `${total.sold} / ${total.start} sold · ${pctText(total.pct)}`
+                  : 'Set starting quantities on the Materials tab'}
+              </span>
+            </div>
+            <span className="bg-track">
+              <span
+                className="bg-fill"
+                style={{
+                  width: Math.min(100, Math.max(0, (total.pct || 0) * 100)) + '%',
+                }}
+              />
+            </span>
+            <div className="st-meta subtle">
+              <span>
+                {total.remaining} remaining across {total.trays} tray type
+                {total.trays === 1 ? '' : 's'}
+              </span>
+              <span>
+                {total.productsSold} product{total.productsSold === 1 ? '' : 's'} sold
+                on trays
+              </span>
+            </div>
+          </div>
           <div className="st-rows">
             {rows.map((r) => (
               <div className="st-row" key={r.id}>
@@ -285,6 +314,7 @@ export default function Financials() {
   const byDay = useMemo(() => groupByDay(filtered), [filtered]);
   const trays = useMemo(() => materials.filter((m) => m.is_limiting), [materials]);
   const sell = useMemo(() => sellThrough(filtered, trays), [filtered, trays]);
+  const sellTotal = useMemo(() => totalSellThrough(filtered, trays), [filtered, trays]);
   const customers = useMemo(() => topCustomers(filtered), [filtered]);
 
   const activeFilters = filterCategories
@@ -368,9 +398,9 @@ export default function Financials() {
           rows: breakdownRows(byLocation),
         },
         {
-          title: 'By Price Point',
+          title: 'By Price Range ($10 steps)',
           columns: [
-            { label: 'Price' },
+            { label: 'Price range' },
             { label: 'Products sold' },
             { label: 'Orders' },
             { label: 'Revenue', money: true },
@@ -399,7 +429,19 @@ export default function Financials() {
             { label: '% sold', pct: true },
             { label: 'Products sold' },
           ],
-          rows: sell.map((r) => [r.label, r.start, r.sold, r.remaining, r.pct, r.productsSold]),
+          rows: [
+            ...(trays.length
+              ? [[
+                  'TOTAL (all trays)',
+                  sellTotal.start,
+                  sellTotal.sold,
+                  sellTotal.remaining,
+                  sellTotal.pct,
+                  sellTotal.productsSold,
+                ]]
+              : []),
+            ...sell.map((r) => [r.label, r.start, r.sold, r.remaining, r.pct, r.productsSold]),
+          ],
         },
         {
           title: 'Orders by Day',
@@ -434,7 +476,7 @@ export default function Financials() {
           rows: barRows(byLocation, metricKey(locMetric)),
         },
         {
-          title: 'Orders by Price Point (products sold)',
+          title: 'Orders by Price Point ($10 ranges, products sold)',
           rows: byPrice.map((r) => ({ label: r.label, value: r.lineItems })),
         },
         {
@@ -444,13 +486,22 @@ export default function Financials() {
         },
         {
           title: 'Sell-through (% of starting quantity sold)',
-          rows: sell
+          rows: [
+            ...(sellTotal.start
+              ? [{
+                  label: 'Total (all trays)',
+                  value: Math.max(0, sellTotal.pct || 0),
+                  display: `${sellTotal.sold}/${sellTotal.start} · ${pctText(sellTotal.pct)}`,
+                }]
+              : []),
+            ...sell
             .filter((r) => r.start)
             .map((r) => ({
               label: r.label,
               value: Math.max(0, r.pct || 0),
               display: `${r.sold}/${r.start} · ${pctText(r.pct)}`,
             })),
+          ],
         },
         {
           title: 'Orders by Day',
@@ -575,7 +626,7 @@ export default function Financials() {
         keepOrder
       />
 
-      <SellThrough rows={sell} filtered={activeFilters.length > 0} />
+      <SellThrough rows={sell} total={sellTotal} filtered={activeFilters.length > 0} />
 
       <BarGraph
         title="Revenue by Payment Method"

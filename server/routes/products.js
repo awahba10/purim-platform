@@ -5,6 +5,8 @@ const {
   cleanMaterials,
   withMaterials,
   restoreProductMaterials,
+  addNeeds,
+  assertTrayStock,
 } = require('../lib/products');
 
 const SELECT_PRODUCT = `
@@ -112,6 +114,14 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     if (Array.isArray(f.materials)) {
+      // Net tray demand = new usage minus what this product already holds.
+      const { rows: old } = await client.query(
+        'SELECT material_id, quantity_used FROM product_materials WHERE product_id = $1',
+        [req.params.id]
+      );
+      const needs = addNeeds(new Map(), f.materials);
+      addNeeds(needs, old, -1);
+      await assertTrayStock(client, needs);
       await restoreProductMaterials(client, req.params.id);
       await client.query('DELETE FROM product_materials WHERE product_id = $1', [
         req.params.id,

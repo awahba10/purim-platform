@@ -203,6 +203,46 @@ async function insertProduct(client, orderId, input) {
   return productId;
 }
 
+// --- Limiting stock (trays) can never go below zero --------------------------
+//
+// `needs` is a Map of material_id -> net extra quantity this change consumes
+// (new usage minus any usage being given back). Regular materials are ignored:
+// they may go negative freely. Locks the tray rows so two orders can't both
+// take the last tray.
+function addNeeds(needs, materials, sign = 1) {
+  for (const m of cleanMaterials(materials)) {
+    needs.set(m.material_id, (needs.get(m.material_id) || 0) + sign * m.quantity_used);
+  }
+  return needs;
+}
+
+async function assertTrayStock(db, needs) {
+  const ids = [...needs].filter(([, n]) => n > 0).map(([id]) => id);
+  if (!ids.length) return;
+  const { rows } = await db.query(
+    `SELECT id, name, quantity FROM materials
+      WHERE id = ANY($1::int[]) AND is_limiting
+      ORDER BY id FOR UPDATE`,
+    [ids]
+  );
+  const problems = rows
+    .filter((r) => Number(r.quantity) - needs.get(r.id) < 0)
+    .map((r) => {
+      const left = Math.max(0, Number(r.quantity));
+      const need = needs.get(r.id);
+      return left === 0
+        ? `${r.name} is sold out (0 left)`
+        : `only ${left} ${r.name} left, but this needs ${need}`;
+    });
+  if (problems.length) {
+    const msg = problems.join('; ');
+    throw Object.assign(
+      new Error(`Not enough trays: ${msg}. Reduce the quantity or choose another tray.`),
+      { status: 400 }
+    );
+  }
+}
+
 // Add back the stock a product's materials consumed.
 async function restoreProductMaterials(client, productId) {
   const { rows } = await client.query(
@@ -252,4 +292,6 @@ module.exports = {
   insertProduct,
   restoreProductMaterials,
   fetchOrderFull,
+  addNeeds,
+  assertTrayStock,
 };

@@ -30,7 +30,7 @@ export default function ProductFields({
   onRemove,
   onDuplicate,
   title,
-  warnings, // optional string[] — stock warnings (shown, never blocking)
+  stockErrors, // optional string[] — tray stock errors (block saving)
 }) {
   const dlId = 'dl' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const set = (patch) => onChange({ ...value, ...patch });
@@ -78,10 +78,10 @@ export default function ProductFields({
       <div className="pf-section">
         <div className="pf-section-title">1 · Product Details</div>
 
-        {warnings && warnings.length > 0 && (
-          <div className="stock-warn" role="alert">
-            {warnings.map((w) => (
-              <div key={w}>⚠ {w}</div>
+        {stockErrors && stockErrors.length > 0 && (
+          <div className="stock-error" role="alert">
+            {stockErrors.map((w) => (
+              <div key={w}>{w}</div>
             ))}
           </div>
         )}

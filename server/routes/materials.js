@@ -10,6 +10,9 @@ const toMaterial = (m) => ({
     m.is_limiting && m.starting_quantity != null ? Number(m.starting_quantity) : null,
 });
 
+const TRAY_NEGATIVE =
+  "A limiting-stock (tray) quantity can't be below zero. Regular materials can go negative.";
+
 // Whole number or null (blank / missing).
 const intOrNull = (v) =>
   v === undefined || v === null || v === '' ? null : Math.floor(Number(v)) || 0;
@@ -33,6 +36,9 @@ router.post('/', async (req, res, next) => {
     }
     const qty = Number(quantity) || 0;
     const limiting = is_limiting === true;
+    if (limiting && qty < 0) {
+      return res.status(400).json({ error: TRAY_NEGATIVE });
+    }
     // A new limiting material starts with "bought" = current stock unless given.
     const start = limiting ? intOrNull(starting_quantity) ?? qty : null;
     const { rows } = await pool.query(
@@ -65,6 +71,21 @@ router.patch('/:id', async (req, res, next) => {
       put('starting_quantity', intOrNull(starting_quantity));
     }
     if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+
+    // Trays can never be set below zero (regular materials can).
+    const { rows: cur } = await pool.query(
+      'SELECT quantity, is_limiting FROM materials WHERE id = $1',
+      [req.params.id]
+    );
+    if (!cur.length) return res.status(404).json({ error: 'Material not found' });
+    const finalLimiting =
+      is_limiting !== undefined ? is_limiting === true : cur[0].is_limiting;
+    const finalQty =
+      quantity !== undefined ? Number(quantity) || 0 : Number(cur[0].quantity);
+    if (finalLimiting && finalQty < 0) {
+      return res.status(400).json({ error: TRAY_NEGATIVE });
+    }
+
     vals.push(req.params.id);
     const { rows } = await pool.query(
       `UPDATE materials SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`,

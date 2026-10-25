@@ -2,6 +2,56 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { money } from '../util';
 
+// Current stock. Zero or below shows in red with a small chip: trays are
+// "Sold out" (they never go negative); regular materials say "Need to buy".
+function StockQty({ item }) {
+  const low = item.quantity <= 0;
+  return (
+    <span className={'stock-qty' + (low ? ' low' : '')}>
+      {item.quantity}
+      {low && (
+        <span className="need-chip">{item.is_limiting ? 'Sold out' : 'Need to buy'}</span>
+      )}
+    </span>
+  );
+}
+
+function MaterialTable({ title, hint, items, onChanged, onError, empty }) {
+  return (
+    <section className="mat-section">
+      <h3>
+        {title} <span className="subtle">({items.length})</span>
+      </h3>
+      {hint && <p className="hint">{hint}</p>}
+      <div className="table-wrap">
+        <table className="grid">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>In stock</th>
+              <th>Starting qty</th>
+              <th>Cost each</th>
+              <th className="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((m) => (
+              <MaterialRow key={m.id} item={m} onChanged={onChanged} onError={onError} />
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={5} className="subtle">
+                  {empty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function MaterialRow({ item, onChanged, onError }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
@@ -27,6 +77,10 @@ function MaterialRow({ item, onChanged, onError }) {
   };
 
   const save = async () => {
+    if (limiting && (Number(qty) || 0) < 0) {
+      onError("A tray's quantity can't be below zero.");
+      return;
+    }
     setBusy(true);
     try {
       await api.patch(`/materials/${item.id}`, {
@@ -37,6 +91,7 @@ function MaterialRow({ item, onChanged, onError }) {
         ...(limiting ? { starting_quantity: start === '' ? null : Number(start) } : {}),
       });
       setEditing(false);
+      onError('');
       onChanged();
     } catch (e) {
       onError(e.message);
@@ -57,12 +112,14 @@ function MaterialRow({ item, onChanged, onError }) {
 
   if (!editing) {
     return (
-      <tr>
+      <tr className={item.is_limiting ? 'limit-row' : ''}>
         <td>
           {item.name}
           {item.is_limiting && <span className="limit-tag">Limiting</span>}
         </td>
-        <td className={item.quantity < 0 ? 'neg' : ''}>{item.quantity}</td>
+        <td>
+          <StockQty item={item} />
+        </td>
         <td>{item.is_limiting ? item.starting_quantity ?? '—' : '—'}</td>
         <td>{money(item.cost)}</td>
         <td className="right">
@@ -76,7 +133,7 @@ function MaterialRow({ item, onChanged, onError }) {
   }
 
   return (
-    <tr>
+    <tr className={item.is_limiting ? 'limit-row' : ''}>
       <td>
         <input value={name} onChange={(e) => setName(e.target.value)} />
         <button
@@ -91,6 +148,7 @@ function MaterialRow({ item, onChanged, onError }) {
       <td>
         <input
           type="number"
+          min={limiting ? 0 : undefined}
           value={qty}
           onChange={(e) => setQty(e.target.value)}
           style={{ width: '90px' }}
@@ -146,6 +204,9 @@ export default function Materials() {
     e.preventDefault();
     setError('');
     if (!draft.name.trim()) return;
+    if (draft.is_limiting && (Number(draft.quantity) || 0) < 0) {
+      return setError("A tray's quantity can't be below zero.");
+    }
     try {
       await api.post('/materials', {
         name: draft.name.trim(),
@@ -219,36 +280,22 @@ export default function Materials() {
 
       {error && <div className="error">{error}</div>}
 
-      <div className="table-wrap">
-        <table className="grid">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>In stock</th>
-              <th>Starting qty</th>
-              <th>Cost each</th>
-              <th className="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((m) => (
-              <MaterialRow
-                key={m.id}
-                item={m}
-                onChanged={load}
-                onError={setError}
-              />
-            ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={5} className="subtle">
-                  No materials yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <MaterialTable
+        title="Limiting Stock (Trays)"
+        hint="Trays cap how many products can be sold. Their stock never goes below zero — an order that needs more trays than are left can't be submitted."
+        items={items.filter((m) => m.is_limiting)}
+        onChanged={load}
+        onError={setError}
+        empty="No limiting-stock materials yet — edit a material and turn on “Limiting stock”."
+      />
+      <MaterialTable
+        title="Other Materials"
+        hint="Regular supplies never block an order. If one runs out its stock goes negative and is flagged “Need to buy”."
+        items={items.filter((m) => !m.is_limiting)}
+        onChanged={load}
+        onError={setError}
+        empty="No other materials yet."
+      />
     </div>
   );
 }

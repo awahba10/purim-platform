@@ -1540,3 +1540,63 @@ td.right button {
 .st-row .bg-track {
   display: block;
 }
+
+/* --- Materials sections + stock flags --- */
+.mat-section {
+  margin-top: 18px;
+}
+.mat-section h3 {
+  margin-bottom: 2px;
+}
+.grid tbody tr.limit-row {
+  background: #f5f9ff;
+}
+.stock-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.stock-qty.low {
+  color: var(--danger);
+  font-weight: 700;
+}
+.need-chip {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #fee2e2;
+  color: var(--danger);
+  white-space: nowrap;
+}
+.stock-error {
+  background: #fef2f2;
+  color: var(--danger);
+  border: 1px solid #f0c8c8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cm-item:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  background: none;
+}
+.st-total {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+  background: var(--brand-soft);
+  font-size: 14px;
+}
+.st-total .bg-track {
+  display: block;
+  height: 20px;
+  background: #fff;
+}

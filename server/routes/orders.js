@@ -5,6 +5,8 @@ const {
   insertProduct,
   restoreProductMaterials,
   fetchOrderFull,
+  addNeeds,
+  assertTrayStock,
 } = require('../lib/products');
 
 const ticketFor = (id) => 'T-' + String(id).padStart(4, '0');
@@ -120,6 +122,9 @@ router.post('/', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const needs = new Map();
+    for (const p of list) addNeeds(needs, p.materials);
+    await assertTrayStock(client, needs);
     const { rows } = await client.query(
       `INSERT INTO orders (customer_name, phone, contact_method, payment_method)
        VALUES ($1, $2, $3, $4) RETURNING id`,
@@ -205,6 +210,7 @@ router.post('/:id/products', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Order not found' });
     }
+    await assertTrayStock(client, addNeeds(new Map(), req.body.materials));
     await insertProduct(client, rows[0].id, req.body);
     await client.query('COMMIT');
     res.status(201).json(await fetchOrderFull(pool, req.params.id));

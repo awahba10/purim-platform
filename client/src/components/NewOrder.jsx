@@ -10,7 +10,7 @@ import {
   validateProductDraft,
   formToMethod,
   validateMethodForm,
-  trayWarnings,
+  trayErrors,
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
@@ -57,7 +57,11 @@ export default function NewOrder() {
     return m;
   }, [materials]);
 
-  const warnings = useMemo(() => trayWarnings(products, materials), [products, materials]);
+  const stockErrors = useMemo(
+    () => trayErrors(products, materials),
+    [products, materials]
+  );
+  const hasStockErrors = Object.keys(stockErrors).length > 0;
 
   const named = products.filter((p) => p.name.trim());
   const costOf = (p) =>
@@ -75,6 +79,9 @@ export default function NewOrder() {
     const methodProblem = validateMethodForm(payMethod);
     if (methodProblem) return setError(methodProblem);
     if (!named.length) return setError('Add at least one product with a name.');
+    if (hasStockErrors) {
+      return setError('Not enough trays for this order — fix the products marked in red.');
+    }
     for (const p of named) {
       const problem = validateProductDraft(p);
       if (problem) return setError(`"${p.name.trim()}": ${problem}`);
@@ -147,7 +154,7 @@ export default function NewOrder() {
             presets={presets}
             deliveryLocations={deliveryLocations}
             onChange={(next) => setProduct(i, next)}
-            warnings={warnings[p._key]}
+            stockErrors={stockErrors[p._key]}
             onDuplicate={() => duplicateProduct(i)}
             onRemove={products.length > 1 ? () => removeProduct(i) : null}
           />
@@ -203,7 +210,13 @@ export default function NewOrder() {
         </div>
 
         {error && <div className="error">{error}</div>}
-        <button className="primary" disabled={saving}>
+        {hasStockErrors && (
+          <div className="stock-error">
+            Not enough trays for this order — reduce the quantities marked in red
+            to submit.
+          </div>
+        )}
+        <button className="primary" disabled={saving || hasStockErrors}>
           {saving ? 'Saving…' : 'Create order'}
         </button>
         {materials.length === 0 && (

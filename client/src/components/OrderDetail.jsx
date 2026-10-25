@@ -8,6 +8,8 @@ import {
   validateProductDraft,
   methodToForm,
   formToMethod,
+  trayErrors,
+  catalogWithReturned,
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
@@ -124,19 +126,19 @@ export default function OrderDetail({ id, onClose, onChanged }) {
   const [orderForm, setOrderForm] = useState(null);
   const [productModal, setProductModal] = useState(null); // { mode, product?, draft }
 
+  // Materials are reloaded too so tray stock stays current after each change.
   const load = () =>
-    api
-      .get(`/orders/${id}`)
-      .then((o) => {
+    Promise.all([api.get(`/orders/${id}`), api.get('/materials'), api.get('/presets')])
+      .then(([o, m, ps]) => {
         setOrder(o);
         setOrderForm(o);
+        setMaterials(m);
+        setPresets(ps);
       })
       .catch((e) => setError(e.message));
 
   useEffect(() => {
     load();
-    api.get('/materials').then(setMaterials).catch(() => {});
-    api.get('/presets').then(setPresets).catch(() => {});
     api.get('/delivery-locations').then(setDeliveryLocations).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -197,8 +199,20 @@ export default function OrderDetail({ id, onClose, onChanged }) {
     }
   };
 
+  // Tray stock check for the add/edit product modal. When editing, the
+  // product's current trays count as available again.
+  const modalStockErrors = productModal
+    ? trayErrors(
+        [productModal.draft],
+        productModal.mode === 'edit'
+          ? catalogWithReturned(materials, productModal.product.materials)
+          : materials
+      )[productModal.draft._key] || []
+    : [];
+
   const saveProduct = async () => {
     const { mode, product, draft } = productModal;
+    if (modalStockErrors.length) return setError(modalStockErrors[0]);
     const problem = validateProductDraft(draft);
     if (problem) {
       setError(problem);
@@ -404,9 +418,10 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                     {p.is_made ? 'Mark not made' : 'Mark made'}
                   </button>
                   <button
-                    onClick={() =>
-                      setProductModal({ mode: 'edit', product: p, draft: productToDraft(p) })
-                    }
+                    onClick={() => {
+                      setError('');
+                      setProductModal({ mode: 'edit', product: p, draft: productToDraft(p) });
+                    }}
                   >
                     Edit
                   </button>
@@ -419,7 +434,10 @@ export default function OrderDetail({ id, onClose, onChanged }) {
             <button
               type="button"
               className="add-product"
-              onClick={() => setProductModal({ mode: 'add', draft: newProductDraft() })}
+              onClick={() => {
+                setError('');
+                setProductModal({ mode: 'add', draft: newProductDraft() });
+              }}
             >
               + Add product to this order
             </button>
@@ -468,15 +486,21 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                 ✕
               </button>
             </div>
+            {error && <div className="error">{error}</div>}
             <ProductFields
               value={productModal.draft}
               catalog={materials}
               presets={presets}
               deliveryLocations={deliveryLocations}
               onChange={(next) => setProductModal((pm) => ({ ...pm, draft: next }))}
+              stockErrors={modalStockErrors}
             />
             <div className="modal-actions">
-              <button className="primary" onClick={saveProduct} disabled={busy}>
+              <button
+                className="primary"
+                onClick={saveProduct}
+                disabled={busy || modalStockErrors.length > 0}
+              >
                 Save product
               </button>
               <button onClick={() => setProductModal(null)}>Cancel</button>

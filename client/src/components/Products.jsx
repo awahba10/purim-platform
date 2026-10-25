@@ -9,6 +9,8 @@ import {
   validateProductDraft,
   filterItems,
   distinctSorted,
+  trayErrors,
+  catalogWithReturned,
 } from '../util';
 import ProductFields from './ProductFields';
 import LabelExport from './LabelExport';
@@ -214,6 +216,7 @@ export default function Products() {
 
   const rowClick = (p, e) => {
     if (!selectMode) {
+      setError('');
       setEditing({ product: p, draft: productToDraft(p) });
       return;
     }
@@ -328,8 +331,17 @@ export default function Products() {
       toCSV(products, CSV_COLUMNS)
     );
 
+  // The product's current trays count as available again while editing.
+  const editStockErrors = editing
+    ? trayErrors(
+        [editing.draft],
+        catalogWithReturned(materials, editing.product.materials)
+      )[editing.draft._key] || []
+    : [];
+
   const save = async () => {
     const d = editing.draft;
+    if (editStockErrors.length) return setError(editStockErrors[0]);
     const problem = validateProductDraft(d);
     if (problem) return setError(problem);
     setBusy(true);
@@ -550,14 +562,20 @@ export default function Products() {
                 ✕
               </button>
             </div>
+            {error && <div className="error">{error}</div>}
             <ProductFields
               value={editing.draft}
               catalog={materials}
               deliveryLocations={deliveryLocations}
               onChange={(next) => setEditing((cur) => ({ ...cur, draft: next }))}
+              stockErrors={editStockErrors}
             />
             <div className="modal-actions">
-              <button className="primary" onClick={save} disabled={busy}>
+              <button
+                className="primary"
+                onClick={save}
+                disabled={busy || editStockErrors.length > 0}
+              >
                 Save changes
               </button>
               <button onClick={() => setEditing(null)}>Cancel</button>
