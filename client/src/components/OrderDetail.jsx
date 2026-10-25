@@ -6,17 +6,40 @@ import {
   draftToPayload,
   newProductDraft,
   validateProductDraft,
+  methodToForm,
+  formToMethod,
 } from '../util';
 import ProductFields from './ProductFields';
+import PaymentMethodPicker from './PaymentMethodPicker';
 
 const PAYMENT = ['Paid', 'Partially Paid', 'Not Paid'];
 const PRODUCTION = ['None Made', 'Some Made', 'All Made'];
 const DELIVERY = ['None Delivered', 'Some Delivered', 'All Delivered'];
 
+// One labeled row of the status stack: label on the left (above on phones),
+// chips + hint on the right.
+function StatusRow({ label, children, hint }) {
+  return (
+    <div className="status-item">
+      <div className="status-label">{label}</div>
+      <div className="status-body">
+        {children}
+        {hint && <div className="hint">{hint}</div>}
+      </div>
+    </div>
+  );
+}
+
 function StatusGroup({ label, options, value, computed, isAuto, busy, onPick, onAuto }) {
   return (
-    <div>
-      <div className="subtle">{label}</div>
+    <StatusRow
+      label={label}
+      hint={
+        isAuto
+          ? `Auto from products: ${value}`
+          : `Manually set · calculated is ${computed}`
+      }
+    >
       <div className="pill-group">
         {options.map((s) => (
           <button
@@ -37,12 +60,47 @@ function StatusGroup({ label, options, value, computed, isAuto, busy, onPick, on
           Auto
         </button>
       </div>
-      <div className="hint">
-        {isAuto
-          ? `Auto from products: ${value}`
-          : `Manually set · calculated is ${computed}`}
-      </div>
-    </div>
+    </StatusRow>
+  );
+}
+
+// Payment method: picking a preset saves right away (clicking the active chip
+// clears it). "Other" needs its text typed, then Save.
+function PaymentMethodRow({ stored, busy, onSave }) {
+  const [form, setForm] = useState(() => methodToForm(stored));
+  useEffect(() => setForm(methodToForm(stored)), [stored]);
+
+  const change = (next) => {
+    setForm(next);
+    if (next.choice !== 'Other') {
+      const v = formToMethod(next);
+      if (v !== (stored || '')) onSave(v);
+    }
+  };
+  const pending =
+    form.choice === 'Other' && form.other.trim() !== (stored || '').trim();
+
+  return (
+    <StatusRow
+      label="Payment method"
+      hint={!form.choice ? 'Not set yet' : null}
+    >
+      <PaymentMethodPicker value={form} onChange={change} disabled={busy} />
+      {pending && (
+        <div className="pm-actions">
+          <button
+            className="primary btn-sm"
+            disabled={busy || !form.other.trim()}
+            onClick={() => onSave(form.other.trim())}
+          >
+            Save
+          </button>
+          <button className="btn-sm" onClick={() => setForm(methodToForm(stored))}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </StatusRow>
   );
 }
 
@@ -194,9 +252,8 @@ export default function OrderDetail({ id, onClose, onChanged }) {
 
         {order && (
           <>
-            <div className="status-row">
-              <div>
-                <div className="subtle">Payment status</div>
+            <div className="status-stack">
+              <StatusRow label="Payment status">
                 <div className="pill-group">
                   {PAYMENT.map((s) => (
                     <button
@@ -209,7 +266,12 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                     </button>
                   ))}
                 </div>
-              </div>
+              </StatusRow>
+              <PaymentMethodRow
+                stored={order.payment_method}
+                busy={busy}
+                onSave={(v) => patchOrder({ payment_method: v })}
+              />
               <StatusGroup
                 label="Production status"
                 options={PRODUCTION}

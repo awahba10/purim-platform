@@ -151,9 +151,12 @@ export default function Products() {
       {
         key: 'batch',
         label: 'Delivery Batch',
-        options: batches.map((b) => ({ value: String(b.id), label: b.name })),
+        options: [
+          { value: 'unassigned', label: 'Unassigned' },
+          ...batches.map((b) => ({ value: String(b.id), label: b.name })),
+        ],
         match: (p, v) =>
-          v.includes(p.batch_id == null ? '' : String(p.batch_id)),
+          v.includes(p.batch_id == null ? 'unassigned' : String(p.batch_id)),
       },
     ],
     [products, deliveryLocations, batches]

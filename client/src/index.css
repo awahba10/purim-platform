@@ -742,9 +742,12 @@ td.right button {
 .mp-chips {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 6px;
-  max-height: 148px;
+  /* Exactly two rows of 32px chips (+ gap, padding, border); more scrolls. */
+  max-height: calc(32px * 2 + 6px + 8px * 2 + 2px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -760,6 +763,9 @@ td.right button {
   padding: 5px 10px;
   font-size: 13px;
   white-space: nowrap;
+}
+.mp-chips .chip {
+  height: 32px;
 }
 .chip:hover {
   background: var(--brand-soft);
@@ -1371,4 +1377,82 @@ td.right button {
 }
 .hub-label {
   font-size: 14px;
+}
+
+/* --- Order detail: vertical status stack --- */
+.status-stack {
+  display: flex;
+  flex-direction: column;
+  margin: 14px 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.status-item {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+}
+.status-item + .status-item {
+  border-top: 1px solid var(--line);
+}
+.status-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  padding-top: 6px;
+}
+.status-body .pill-group {
+  margin-top: 0;
+}
+.status-body .hint {
+  margin-top: 4px;
+}
+@media (max-width: 560px) {
+  .status-item {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .status-label {
+    padding-top: 0;
+  }
+}
+
+/* --- Payment method picker --- */
+.pm-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pm-other {
+  max-width: 280px;
+}
+.pm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* --- Production --- */
+.maker-notes {
+  font-size: 14px;
+  white-space: pre-wrap;
+  background: var(--warn-bg);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.maker-notes.empty {
+  background: none;
+  padding: 0;
+  color: var(--muted);
+}
+.grid td.frac {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.grid td.frac.done {
+  color: var(--ok);
+  font-weight: 600;
 }

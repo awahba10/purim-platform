@@ -8,8 +8,11 @@ import {
   draftToPayload,
   suggestedCostOf,
   validateProductDraft,
+  formToMethod,
+  validateMethodForm,
 } from '../util';
 import ProductFields from './ProductFields';
+import PaymentMethodPicker from './PaymentMethodPicker';
 
 export default function NewOrder() {
   const navigate = useNavigate();
@@ -21,6 +24,7 @@ export default function NewOrder() {
     phone: '',
     contact_method: '',
   });
+  const [payMethod, setPayMethod] = useState({ choice: '', other: '' });
   const [products, setProducts] = useState([newProductDraft()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -65,6 +69,8 @@ export default function NewOrder() {
     e.preventDefault();
     setError('');
     if (!customer.customer_name.trim()) return setError('Enter the customer name.');
+    const methodProblem = validateMethodForm(payMethod);
+    if (methodProblem) return setError(methodProblem);
     if (!named.length) return setError('Add at least one product with a name.');
     for (const p of named) {
       const problem = validateProductDraft(p);
@@ -74,9 +80,11 @@ export default function NewOrder() {
     try {
       const order = await api.post('/orders', {
         ...customer,
+        payment_method: formToMethod(payMethod),
         products: named.map((p) => draftToPayload(p, materials)),
       });
       setCustomer({ customer_name: '', phone: '', contact_method: '' });
+      setPayMethod({ choice: '', other: '' });
       setProducts([newProductDraft()]);
       navigate(`/orders/${order.id}`);
     } catch (err) {
@@ -118,6 +126,12 @@ export default function NewOrder() {
               placeholder="Text, WhatsApp, @handle, email…"
             />
           </label>
+        </div>
+        <div>
+          <div className="fld-label">
+            Payment method <span className="subtle">(optional — can be added later)</span>
+          </div>
+          <PaymentMethodPicker value={payMethod} onChange={setPayMethod} />
         </div>
 
         <div className="section-label">Products in this order</div>

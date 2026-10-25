@@ -8,9 +8,14 @@ import {
   filterItems,
   distinctSorted,
   classifyContact,
+  PAYMENT_METHODS,
+  methodBucket,
+  formToMethod,
+  validateMethodForm,
 } from '../util';
 import OrderDetail from './OrderDetail';
 import FilterPanel from './FilterPanel';
+import PaymentMethodPicker from './PaymentMethodPicker';
 
 const PRODUCTION_MAP = {
   'Not Made': 'None Made',
@@ -33,6 +38,7 @@ const CSV_COLUMNS = [
   { label: 'Total product charge', get: (o) => o.total_price.toFixed(2) },
   { label: 'Total profit', get: (o) => o.total_profit.toFixed(2) },
   { key: 'payment_status', label: 'Payment' },
+  { key: 'payment_method', label: 'Payment method' },
   { key: 'production_status', label: 'Production' },
   { label: 'Production source', get: (o) => (o.production_is_auto ? 'auto' : 'manual') },
   { key: 'delivery_status', label: 'Delivery' },
@@ -48,6 +54,7 @@ const COLUMNS = [
   { key: 'product_count', label: 'Products' },
   { key: 'total_price', label: 'Charge' },
   { key: 'payment_status', label: 'Payment' },
+  { key: 'payment_method', label: 'Method' },
   { key: 'production_status', label: 'Production' },
   { key: 'delivery_status', label: 'Delivery' },
   { key: 'created_at', label: 'Created' },
@@ -75,6 +82,11 @@ export default function AllOrders() {
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState(() => new Set());
+  const [lastId, setLastId] = useState(null);
+  const [methodModal, setMethodModal] = useState(null); // { choice, other } | null
 
   const load = () =>
     api.get('/orders').then(setOrders).catch((e) => setError(e.message));
@@ -102,6 +114,12 @@ export default function AllOrders() {
           { value: 'Not Paid', label: 'Not Paid' },
         ],
         match: (o, v) => v.includes(o.payment_status),
+      },
+      {
+        key: 'method',
+        label: 'Payment Method',
+        options: [...PAYMENT_METHODS, 'Not set'].map((m) => ({ value: m, label: m })),
+        match: (o, v) => v.includes(methodBucket(o.payment_method)),
       },
       {
         key: 'production',
@@ -134,7 +152,7 @@ export default function AllOrders() {
     const needle = query.trim().toLowerCase();
     if (needle) {
       list = list.filter((o) =>
-        [o.customer_name, o.phone, o.contact_method, o.ticket_number].some((v) =>
+        [o.customer_name, o.phone, o.contact_method, o.ticket_number, o.payment_method].some((v) =>
           (v || '').toLowerCase().includes(needle)
         )
       );
@@ -166,6 +184,94 @@ export default function AllOrders() {
         : { key, dir: 'asc' }
     );
 
+  const selectedOrders = useMemo(
+    () => orders.filter((o) => selected.has(o.id)),
+    [orders, selected]
+  );
+
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelected(new Set());
+    setLastId(null);
+    setMethodModal(null);
+  };
+
+  const rowClick = (o, e) => {
+    if (!selectMode) {
+      navigate(`/orders/${o.id}`);
+      return;
+    }
+    setSelected((s) => {
+      const next = new Set(s);
+      const ids = rows.map((r) => r.id);
+      if (e.shiftKey && lastId != null && ids.includes(lastId)) {
+        const a = ids.indexOf(lastId);
+        const b = ids.indexOf(o.id);
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        for (let k = lo; k <= hi; k++) next.add(ids[k]);
+      } else if (next.has(o.id)) {
+        next.delete(o.id);
+      } else {
+        next.add(o.id);
+      }
+      return next;
+    });
+    setLastId(o.id);
+  };
+
+  const bulkUpdate = async (body) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.post('/orders/bulk-update', { ids: [...selected], ...body });
+      await load();
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyMethod = async () => {
+    const problem = validateMethodForm(methodModal);
+    if (problem) return setError(problem);
+    if (await bulkUpdate({ payment_method: formToMethod(methodModal) })) {
+      setMethodModal(null);
+    }
+  };
+
+  const bulkDelete = async () => {
+    const n = selectedOrders.length;
+    const pCount = selectedOrders.reduce((sum, o) => sum + o.product_count, 0);
+    if (
+      !window.confirm(
+        `Delete ${n} order${n === 1 ? '' : 's'} and ${pCount} product${
+          pCount === 1 ? '' : 's'
+        }? Stock for all their materials goes back. This can't be undone.`
+      )
+    )
+      return;
+    setBusy(true);
+    setError('');
+    try {
+      await api.post('/orders/bulk-delete', { ids: [...selected] });
+      exitSelect();
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportSelectedCsv = () =>
+    downloadCSV(
+      `purim-orders-selected-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCSV(selectedOrders, CSV_COLUMNS)
+    );
+
   const exportCsv = () => {
     downloadCSV(
       `purim-orders-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -177,10 +283,23 @@ export default function AllOrders() {
     <div className="panel">
       <div className="panel-head">
         <h1>All Orders</h1>
-        <button onClick={exportCsv} disabled={orders.length === 0}>
-          Export CSV
-        </button>
+        <div className="ph-actions">
+          <button
+            className={selectMode ? 'primary' : ''}
+            onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+          >
+            {selectMode ? 'Done' : 'Select'}
+          </button>
+          <button onClick={exportCsv} disabled={orders.length === 0}>
+            Export CSV
+          </button>
+        </div>
       </div>
+      {selectMode && (
+        <p className="subtle">
+          Click rows to select them; shift-click another row to select the range.
+        </p>
+      )}
       <FilterPanel
         categories={filterCategories}
         state={filters}
@@ -192,6 +311,38 @@ export default function AllOrders() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      {selectMode && selected.size > 0 && (
+        <div className="action-bar">
+          <span>{selected.size} selected</span>
+          <button disabled={busy} onClick={() => bulkUpdate({ payment_status: 'Paid' })}>
+            Mark Paid
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => bulkUpdate({ payment_status: 'Partially Paid' })}
+          >
+            Mark Partially Paid
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => bulkUpdate({ payment_status: 'Not Paid' })}
+          >
+            Mark Not Paid
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => setMethodModal({ choice: '', other: '' })}
+          >
+            Set Payment Method
+          </button>
+          <button onClick={exportSelectedCsv}>Export CSV</button>
+          <button className="danger" onClick={bulkDelete} disabled={busy}>
+            Delete
+          </button>
+          <button onClick={exitSelect}>Cancel</button>
+        </div>
+      )}
+
       {error && <div className="error">{error}</div>}
 
       <div className="table-wrap">
@@ -208,7 +359,17 @@ export default function AllOrders() {
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.id} onClick={() => navigate(`/orders/${o.id}`)}>
+              <tr
+                key={o.id}
+                className={
+                  (selectMode ? 'selectable ' : '') +
+                  (selectMode && selected.has(o.id) ? 'row-selected' : '')
+                }
+                onMouseDown={(e) => {
+                  if (selectMode && e.shiftKey) e.preventDefault();
+                }}
+                onClick={(e) => rowClick(o, e)}
+              >
                 <td>{o.ticket_number}</td>
                 <td>{o.customer_name}</td>
                 <td>{o.phone || '—'}</td>
@@ -220,6 +381,7 @@ export default function AllOrders() {
                     {o.payment_status}
                   </span>
                 </td>
+                <td>{o.payment_method || '—'}</td>
                 <td>
                   <span
                     className={'badge ' + statusClass(o.production_status)}
@@ -251,6 +413,39 @@ export default function AllOrders() {
           </tbody>
         </table>
       </div>
+
+      {methodModal && (
+        <div className="modal-backdrop" onClick={() => setMethodModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>
+                Set payment method · {selected.size} order
+                {selected.size === 1 ? '' : 's'}
+              </h2>
+              <button
+                className="icon-btn"
+                onClick={() => setMethodModal(null)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <PaymentMethodPicker value={methodModal} onChange={setMethodModal} />
+            <div className="modal-actions">
+              <button
+                className="primary"
+                disabled={
+                  busy || (methodModal.choice === 'Other' && !methodModal.other.trim())
+                }
+                onClick={applyMethod}
+              >
+                {methodModal.choice ? 'Apply' : 'Clear method'}
+              </button>
+              <button onClick={() => setMethodModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedId && (
         <OrderDetail

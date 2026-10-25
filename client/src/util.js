@@ -269,3 +269,33 @@ export async function copyText(text) {
   window.prompt('Copy:', value);
   return false;
 }
+
+// --- Payment method -----------------------------------------------------------
+
+export const PAYMENT_METHODS = ['Cash', 'Zelle', 'Venmo', 'Card', 'Check', 'Other'];
+const PRESET_METHODS = PAYMENT_METHODS.filter((m) => m !== 'Other');
+
+// Stored value -> picker state. A stored value that isn't one of the presets is
+// a custom "Other" method.
+export const methodToForm = (stored) => {
+  const v = (stored || '').trim();
+  if (!v) return { choice: '', other: '' };
+  if (PRESET_METHODS.includes(v)) return { choice: v, other: '' };
+  return { choice: 'Other', other: v };
+};
+
+// Picker state -> stored value ('' = not set).
+export const formToMethod = (f) =>
+  !f || !f.choice ? '' : f.choice === 'Other' ? f.other.trim() : f.choice;
+
+export const validateMethodForm = (f) =>
+  f && f.choice === 'Other' && !f.other.trim()
+    ? 'Payment method is "Other" — type the method or pick another.'
+    : null;
+
+// Bucket a stored method for filtering: a preset name, 'Other', or 'Not set'.
+export const methodBucket = (stored) => {
+  const v = (stored || '').trim();
+  if (!v) return 'Not set';
+  return PRESET_METHODS.includes(v) ? v : 'Other';
+};

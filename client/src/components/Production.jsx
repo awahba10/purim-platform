@@ -156,6 +156,11 @@ export default function Production() {
                     {p.recipient_name ? ` · for ${p.recipient_name}` : ''}
                   </div>
 
+                  <div className={'maker-notes' + (p.notes ? '' : ' empty')}>
+                    <strong>Notes: </strong>
+                    {p.notes || 'No notes'}
+                  </div>
+
                   <div className="subtle">
                     <strong>Materials: </strong>
                     {long && !open ? (
@@ -217,7 +222,6 @@ export default function Production() {
             <tr>
               <th>Product</th>
               <th>Total</th>
-              <th>Not Made</th>
               <th>Made</th>
               <th>Delivered</th>
               <th>Gift Label</th>
@@ -234,20 +238,23 @@ export default function Production() {
               >
                 <td>{g.name}</td>
                 <td>{g.total}</td>
-                <td>{g.total - g.made}</td>
-                <td>{g.made}</td>
-                <td>{g.delivered}</td>
-                <td>
+                <td className={'frac' + (g.made === g.total ? ' done' : '')}>
+                  {g.made} / {g.total}
+                </td>
+                <td className={'frac' + (g.delivered === g.total ? ' done' : '')}>
+                  {g.delivered} / {g.total}
+                </td>
+                <td className={'frac' + (g.gift === g.total ? ' done' : '')}>
                   {g.gift} / {g.total}
                 </td>
-                <td>
+                <td className={'frac' + (g.ship === g.total ? ' done' : '')}>
                   {g.ship} / {g.total}
                 </td>
               </tr>
             ))}
             {groups.length === 0 && (
               <tr>
-                <td colSpan={7} className="subtle">
+                <td colSpan={6} className="subtle">
                   No products yet.
                 </td>
               </tr>

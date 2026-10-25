@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS orders (
 --   delivery_override:   'None Delivered' | 'Some Delivered' | 'All Delivered'
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS production_override TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_override TEXT;
+-- How the customer paid (Cash, Zelle, Venmo, Card, Check, or free text for
+-- "Other"). Optional — NULL until known.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT;
 ALTER TABLE orders DROP COLUMN IF EXISTS progress_status;
 ALTER TABLE orders DROP COLUMN IF EXISTS progress_override;
 

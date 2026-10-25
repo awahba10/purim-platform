@@ -8,6 +8,10 @@ const {
 } = require('../lib/products');
 
 const ticketFor = (id) => 'T-' + String(id).padStart(4, '0');
+const PAYMENT_STATUSES = ['Paid', 'Partially Paid', 'Not Paid'];
+const cleanMethod = (v) => (v == null ? null : String(v).trim() || null);
+const cleanIds = (ids) =>
+  Array.isArray(ids) ? [...new Set(ids.map(Number).filter((n) => n > 0))] : [];
 
 // LIST — one row per order, with product count and totals.
 router.get('/', async (req, res, next) => {
@@ -30,6 +34,65 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// BULK UPDATE payment status and/or payment method on many orders at once.
+router.post('/bulk-update', async (req, res, next) => {
+  try {
+    const ids = cleanIds(req.body.ids);
+    if (!ids.length) return res.status(400).json({ error: 'No orders selected' });
+    const sets = [];
+    const vals = [];
+    if (req.body.payment_status !== undefined) {
+      if (!PAYMENT_STATUSES.includes(req.body.payment_status)) {
+        return res.status(400).json({ error: 'Unknown payment status' });
+      }
+      vals.push(req.body.payment_status);
+      sets.push(`payment_status = $${vals.length}`);
+    }
+    if (req.body.payment_method !== undefined) {
+      vals.push(cleanMethod(req.body.payment_method));
+      sets.push(`payment_method = $${vals.length}`);
+    }
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(ids);
+    const { rowCount } = await pool.query(
+      `UPDATE orders SET ${sets.join(', ')} WHERE id = ANY($${vals.length}::int[])`,
+      vals
+    );
+    res.json({ updated: rowCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// BULK DELETE — same as deleting each order: every product's materials go back
+// to stock, then the orders (and their products) are removed. All or nothing.
+router.post('/bulk-delete', async (req, res, next) => {
+  const ids = cleanIds(req.body.ids);
+  if (!ids.length) return res.status(400).json({ error: 'No orders selected' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'SELECT id FROM products WHERE order_id = ANY($1::int[])',
+      [ids]
+    );
+    for (const p of rows) {
+      await restoreProductMaterials(client, p.id);
+    }
+    const { rowCount } = await client.query(
+      'DELETE FROM orders WHERE id = ANY($1::int[])',
+      [ids]
+    );
+    await client.query('COMMIT');
+    res.json({ deleted: rowCount, products: rows.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
 // DETAIL — order plus all its products (each with materials).
 router.get('/:id', async (req, res, next) => {
   try {
@@ -43,7 +106,7 @@ router.get('/:id', async (req, res, next) => {
 
 // CREATE — order-level info + one or more products created on the spot.
 router.post('/', async (req, res, next) => {
-  const { customer_name, phone, contact_method, products } = req.body;
+  const { customer_name, phone, contact_method, payment_method, products } = req.body;
   if (!customer_name || !customer_name.trim()) {
     return res.status(400).json({ error: 'Customer name is required' });
   }
@@ -58,12 +121,13 @@ router.post('/', async (req, res, next) => {
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `INSERT INTO orders (customer_name, phone, contact_method)
-       VALUES ($1, $2, $3) RETURNING id`,
+      `INSERT INTO orders (customer_name, phone, contact_method, payment_method)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
       [
         customer_name.trim(),
         (phone || '').trim() || null,
         (contact_method || '').trim() || null,
+        cleanMethod(payment_method),
       ]
     );
     const orderId = rows[0].id;
@@ -103,6 +167,7 @@ router.patch('/:id', async (req, res, next) => {
       put('contact_method', String(f.contact_method).trim() || null);
     }
     if (f.payment_status !== undefined) put('payment_status', f.payment_status);
+    if (f.payment_method !== undefined) put('payment_method', cleanMethod(f.payment_method));
     // Production / Delivery status: a value sets a manual override; *_auto:true
     // clears it so the order follows the value calculated from its products.
     if (f.production_auto === true) put('production_override', null);
