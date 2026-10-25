@@ -299,3 +299,40 @@ export const methodBucket = (stored) => {
   if (!v) return 'Not set';
   return PRESET_METHODS.includes(v) ? v : 'Other';
 };
+
+// --- Limiting stock (trays) ---------------------------------------------------
+
+// Warnings for each product draft in an order, keyed by draft _key. For every
+// limiting-stock material a draft uses: sold out if none remain, or over the
+// limit if the whole order needs more than remain. Warn only, never block.
+export function trayWarnings(drafts, catalog) {
+  const limiting = {};
+  for (const m of catalog) if (m.is_limiting) limiting[m.id] = m;
+  const demand = {};
+  for (const d of drafts) {
+    for (const m of d.materials) {
+      if (limiting[m.material_id]) {
+        demand[m.material_id] = (demand[m.material_id] || 0) + qtyOf(m.quantity_used);
+      }
+    }
+  }
+  const out = {};
+  for (const d of drafts) {
+    const list = [];
+    for (const m of d.materials) {
+      const tray = limiting[m.material_id];
+      if (!tray) continue;
+      const left = Number(tray.quantity) || 0;
+      const need = demand[m.material_id];
+      if (left <= 0) {
+        list.push(`Sold out: no ${tray.name} remaining. You can still add it.`);
+      } else if (need > left) {
+        list.push(
+          `Only ${left} ${tray.name} left — this order uses ${need}. You can still add it.`
+        );
+      }
+    }
+    if (list.length) out[d._key] = list;
+  }
+  return out;
+}

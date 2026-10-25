@@ -5,7 +5,14 @@ const toMaterial = (m) => ({
   ...m,
   quantity: Number(m.quantity),
   cost: Number(m.cost),
+  is_limiting: Boolean(m.is_limiting),
+  starting_quantity:
+    m.is_limiting && m.starting_quantity != null ? Number(m.starting_quantity) : null,
 });
+
+// Whole number or null (blank / missing).
+const intOrNull = (v) =>
+  v === undefined || v === null || v === '' ? null : Math.floor(Number(v)) || 0;
 
 // List all materials.
 router.get('/', async (req, res, next) => {
@@ -20,13 +27,18 @@ router.get('/', async (req, res, next) => {
 // Add a custom material.
 router.post('/', async (req, res, next) => {
   try {
-    const { name, quantity, cost } = req.body;
+    const { name, quantity, cost, is_limiting, starting_quantity } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Material name is required' });
     }
+    const qty = Number(quantity) || 0;
+    const limiting = is_limiting === true;
+    // A new limiting material starts with "bought" = current stock unless given.
+    const start = limiting ? intOrNull(starting_quantity) ?? qty : null;
     const { rows } = await pool.query(
-      'INSERT INTO materials (name, quantity, cost) VALUES ($1, $2, $3) RETURNING *',
-      [name.trim(), Number(quantity) || 0, Number(cost) || 0]
+      `INSERT INTO materials (name, quantity, cost, is_limiting, starting_quantity)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [name.trim(), qty, Number(cost) || 0, limiting, start]
     );
     res.status(201).json(toMaterial(rows[0]));
   } catch (err) {
@@ -34,23 +46,29 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// Edit a material (name, quantity, and/or cost).
+// Edit a material (name, quantity, cost, limiting flag, starting quantity).
 router.patch('/:id', async (req, res, next) => {
   try {
-    const { name, quantity, cost } = req.body;
+    const { name, quantity, cost, is_limiting, starting_quantity } = req.body;
+    const sets = [];
+    const vals = [];
+    const put = (col, val) => {
+      vals.push(val);
+      sets.push(`${col} = $${vals.length}`);
+    };
+    if (name !== undefined && String(name).trim()) put('name', String(name).trim());
+    if (quantity !== undefined) put('quantity', Number(quantity) || 0);
+    if (cost !== undefined) put('cost', Number(cost) || 0);
+    if (is_limiting !== undefined) put('is_limiting', is_limiting === true);
+    if (is_limiting === false) put('starting_quantity', null);
+    else if (starting_quantity !== undefined) {
+      put('starting_quantity', intOrNull(starting_quantity));
+    }
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(req.params.id);
     const { rows } = await pool.query(
-      `UPDATE materials
-         SET name = COALESCE($1, name),
-             quantity = COALESCE($2, quantity),
-             cost = COALESCE($3, cost)
-       WHERE id = $4
-       RETURNING *`,
-      [
-        name !== undefined ? String(name).trim() : null,
-        quantity !== undefined ? Number(quantity) : null,
-        cost !== undefined ? Number(cost) : null,
-        req.params.id,
-      ]
+      `UPDATE materials SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`,
+      vals
     );
     if (!rows.length) return res.status(404).json({ error: 'Material not found' });
     res.json(toMaterial(rows[0]));

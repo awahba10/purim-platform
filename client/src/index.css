@@ -1456,3 +1456,87 @@ td.right button {
   color: var(--ok);
   font-weight: 600;
 }
+
+/* --- Limiting stock (trays) --- */
+.limit-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--info-bg);
+  color: var(--info);
+  vertical-align: 1px;
+}
+.limit-toggle {
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eef0f2;
+  color: var(--muted);
+  border-color: #e2e5e8;
+  white-space: nowrap;
+}
+.grid td .limit-toggle {
+  display: block;
+  margin-top: 6px;
+}
+.limit-toggle.on {
+  background: var(--info-bg);
+  color: var(--info);
+  border-color: var(--info-bg);
+}
+.add-bar input.start-qty {
+  max-width: 170px;
+}
+.cm-meta {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.cm-meta.out {
+  color: var(--warn);
+  font-weight: 700;
+}
+.cm-item.sold-out {
+  color: var(--muted);
+}
+.inv-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.stock-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid #f5d98b;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- Financials: sell-through --- */
+.st-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+.st-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+}
+.st-top,
+.st-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.st-row .bg-track {
+  display: block;
+}

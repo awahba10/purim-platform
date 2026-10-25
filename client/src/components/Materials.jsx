@@ -7,13 +7,23 @@ function MaterialRow({ item, onChanged, onError }) {
   const [name, setName] = useState(item.name);
   const [qty, setQty] = useState(item.quantity);
   const [cost, setCost] = useState(item.cost);
+  const [limiting, setLimiting] = useState(item.is_limiting);
+  const [start, setStart] = useState(item.starting_quantity ?? '');
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
     setName(item.name);
     setQty(item.quantity);
     setCost(item.cost);
+    setLimiting(item.is_limiting);
+    setStart(item.starting_quantity ?? '');
     setEditing(false);
+  };
+
+  // Turning "Limiting" on pre-fills the starting quantity with current stock.
+  const toggleLimiting = () => {
+    if (!limiting && start === '') setStart(qty);
+    setLimiting((v) => !v);
   };
 
   const save = async () => {
@@ -23,6 +33,8 @@ function MaterialRow({ item, onChanged, onError }) {
         name,
         quantity: Number(qty) || 0,
         cost: Number(cost) || 0,
+        is_limiting: limiting,
+        ...(limiting ? { starting_quantity: start === '' ? null : Number(start) } : {}),
       });
       setEditing(false);
       onChanged();
@@ -46,8 +58,12 @@ function MaterialRow({ item, onChanged, onError }) {
   if (!editing) {
     return (
       <tr>
-        <td>{item.name}</td>
+        <td>
+          {item.name}
+          {item.is_limiting && <span className="limit-tag">Limiting</span>}
+        </td>
         <td className={item.quantity < 0 ? 'neg' : ''}>{item.quantity}</td>
+        <td>{item.is_limiting ? item.starting_quantity ?? '—' : '—'}</td>
         <td>{money(item.cost)}</td>
         <td className="right">
           <button onClick={() => setEditing(true)}>Edit</button>
@@ -63,6 +79,14 @@ function MaterialRow({ item, onChanged, onError }) {
     <tr>
       <td>
         <input value={name} onChange={(e) => setName(e.target.value)} />
+        <button
+          type="button"
+          className={'limit-toggle' + (limiting ? ' on' : '')}
+          onClick={toggleLimiting}
+          title="Limiting stock caps how many of a product can be sold (e.g. trays)"
+        >
+          {limiting ? '✓ Limiting stock' : '+ Limiting stock'}
+        </button>
       </td>
       <td>
         <input
@@ -71,6 +95,20 @@ function MaterialRow({ item, onChanged, onError }) {
           onChange={(e) => setQty(e.target.value)}
           style={{ width: '90px' }}
         />
+      </td>
+      <td>
+        {limiting ? (
+          <input
+            type="number"
+            min="0"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            placeholder="Bought"
+            style={{ width: '90px' }}
+          />
+        ) : (
+          <span className="subtle">—</span>
+        )}
       </td>
       <td>
         <input
@@ -94,7 +132,8 @@ function MaterialRow({ item, onChanged, onError }) {
 export default function Materials() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState({ name: '', quantity: '', cost: '' });
+  const emptyDraft = { name: '', quantity: '', cost: '', is_limiting: false, starting_quantity: '' };
+  const [draft, setDraft] = useState(emptyDraft);
 
   const load = () =>
     api.get('/materials').then(setItems).catch((e) => setError(e.message));
@@ -112,8 +151,13 @@ export default function Materials() {
         name: draft.name.trim(),
         quantity: Number(draft.quantity) || 0,
         cost: Number(draft.cost) || 0,
+        is_limiting: draft.is_limiting,
+        starting_quantity:
+          draft.is_limiting && draft.starting_quantity !== ''
+            ? Number(draft.starting_quantity)
+            : null,
       });
-      setDraft({ name: '', quantity: '', cost: '' });
+      setDraft(emptyDraft);
       load();
     } catch (err) {
       setError(err.message);
@@ -126,6 +170,9 @@ export default function Materials() {
       <p className="subtle">
         Supplies on hand. "Cost" is the price per unit — it feeds each product's
         suggested cost. Stock drops automatically when a product uses a material.
+        Mark bulk-bought items like trays as <strong>Limiting stock</strong> — they
+        cap how many of a premade product can be sold, and their starting quantity
+        (how many you bought) drives sell-through on Financials.
       </p>
 
       <form className="add-bar" onSubmit={add}>
@@ -147,6 +194,26 @@ export default function Materials() {
           value={draft.cost}
           onChange={(e) => setDraft((d) => ({ ...d, cost: e.target.value }))}
         />
+        <button
+          type="button"
+          className={'limit-toggle' + (draft.is_limiting ? ' on' : '')}
+          onClick={() => setDraft((d) => ({ ...d, is_limiting: !d.is_limiting }))}
+          title="Limiting stock caps how many of a product can be sold (e.g. trays)"
+        >
+          {draft.is_limiting ? '✓ Limiting stock' : '+ Limiting stock'}
+        </button>
+        {draft.is_limiting && (
+          <input
+            type="number"
+            min="0"
+            className="start-qty"
+            placeholder="Starting qty (bought)"
+            value={draft.starting_quantity}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, starting_quantity: e.target.value }))
+            }
+          />
+        )}
         <button className="primary">+ Add material</button>
       </form>
 
@@ -158,6 +225,7 @@ export default function Materials() {
             <tr>
               <th>Name</th>
               <th>In stock</th>
+              <th>Starting qty</th>
               <th>Cost each</th>
               <th className="right">Actions</th>
             </tr>
@@ -173,7 +241,7 @@ export default function Materials() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={4} className="subtle">
+                <td colSpan={5} className="subtle">
                   No materials yet.
                 </td>
               </tr>

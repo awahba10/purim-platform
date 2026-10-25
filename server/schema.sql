@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS materials (
 
 -- In case an older "materials" table already exists without the cost column.
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS cost NUMERIC(10, 2) NOT NULL DEFAULT 0;
+-- "Limiting stock": bulk-bought items (trays) that cap how many of a product can
+-- be sold. starting_quantity = how many were bought before selling began.
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS is_limiting BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS starting_quantity INTEGER;
 
 CREATE TABLE IF NOT EXISTS orders (
   id                  SERIAL PRIMARY KEY,
@@ -107,6 +111,11 @@ CREATE TABLE IF NOT EXISTS preset_materials (
 );
 
 CREATE INDEX IF NOT EXISTS idx_preset_materials_preset ON preset_materials(preset_id);
+
+-- A preset's anchor tray: a limiting-stock material whose remaining quantity is
+-- the preset's derived inventory. Several presets may share one tray type.
+ALTER TABLE presets ADD COLUMN IF NOT EXISTS anchor_material_id INTEGER
+  REFERENCES materials(id) ON DELETE SET NULL;
 
 -- Delivery locations: a reference list only. The cost figure is never applied
 -- automatically anywhere; only the names feed the New Order location selector.

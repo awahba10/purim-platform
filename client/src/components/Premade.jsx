@@ -2,23 +2,28 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { money, suggestedCostOf, qtyOf } from '../util';
 import MaterialPicker from './MaterialPicker';
+import AnchorChip from './AnchorChip';
+import InventoryBadge from './InventoryBadge';
 
 const COLUMNS = [
   { key: 'name', label: 'Name' },
   { key: 'cost', label: 'Cost' },
   { key: 'price', label: 'Price' },
+  { key: 'anchor_name', label: 'Anchor tray' },
+  { key: 'inventory', label: 'Inventory' },
 ];
 
-const NUMERIC = new Set(['cost', 'price']);
+const NUMERIC = new Set(['cost', 'price', 'inventory']);
 
 function emptyDraft() {
-  return { name: '', price: '', materials: [] };
+  return { name: '', price: '', anchor_material_id: null, materials: [] };
 }
 
 function presetToDraft(p) {
   return {
     name: p.name || '',
     price: String(p.price ?? ''),
+    anchor_material_id: p.anchor_material_id ?? null,
     materials: (p.materials || []).map((m) => ({
       material_id: m.material_id,
       quantity_used: m.quantity_used,
@@ -58,8 +63,9 @@ export default function Premade() {
       let av = a[key];
       let bv = b[key];
       if (NUMERIC.has(key)) {
-        av = Number(av);
-        bv = Number(bv);
+        // Presets without an anchor (null inventory) sort last.
+        av = av == null ? Infinity : Number(av);
+        bv = bv == null ? Infinity : Number(bv);
       } else {
         av = (av == null ? '' : String(av)).toLowerCase();
         bv = (bv == null ? '' : String(bv)).toLowerCase();
@@ -85,6 +91,7 @@ export default function Premade() {
     const body = {
       name: d.name.trim(),
       price: Number(d.price) || 0,
+      anchor_material_id: d.anchor_material_id,
       materials: d.materials.map((m) => ({
         material_id: m.material_id,
         quantity_used: qtyOf(m.quantity_used),
@@ -112,6 +119,26 @@ export default function Premade() {
     }
   };
 
+  const trays = useMemo(() => materials.filter((m) => m.is_limiting), [materials]);
+
+  // Picking an anchor tray puts it in the materials list (qty 1) if missing.
+  // Switching trays swaps the old tray's entry for the new one.
+  const setAnchor = (id) =>
+    setEditing((c) => {
+      const prev = c.draft.anchor_material_id;
+      let mats = c.draft.materials;
+      if (prev != null && id != null) {
+        mats = mats.filter((m) => m.material_id !== prev);
+      }
+      if (id != null && !mats.some((m) => m.material_id === id)) {
+        mats = [...mats, { material_id: id, quantity_used: 1 }];
+      }
+      return {
+        ...c,
+        draft: { ...c.draft, anchor_material_id: id, materials: mats },
+      };
+    });
+
   const draftCost = editing
     ? suggestedCostOf(editing.draft.materials, materials)
     : 0;
@@ -121,8 +148,9 @@ export default function Premade() {
       <h1>Premade Products</h1>
       <p className="subtle">
         Reusable recipes to speed up New Order. Pick one while adding a product and
-        it fills in the name, materials, cost, and price — all still editable. These
-        do not hold stock and are not part of order or inventory logic.
+        it fills in the name, materials, cost, and price — all still editable. A
+        preset's <strong>Inventory</strong> is its anchor tray's remaining stock
+        (set on the Materials tab); presets sharing a tray show the same number.
       </p>
 
       <button
@@ -157,6 +185,10 @@ export default function Premade() {
                 <td>{p.name}</td>
                 <td>{money(p.cost)}</td>
                 <td>{money(p.price)}</td>
+                <td>{p.anchor_name || <span className="subtle">—</span>}</td>
+                <td>
+                  <InventoryBadge value={p.inventory} />
+                </td>
                 <td className="subtle">
                   {p.materials.length
                     ? p.materials
@@ -216,6 +248,19 @@ export default function Premade() {
                   placeholder="Classic tray"
                 />
               </label>
+
+              <div>
+                <div className="fld-label">Anchor tray</div>
+                <AnchorChip
+                  value={editing.draft.anchor_material_id}
+                  trays={trays}
+                  onPick={setAnchor}
+                />
+                <div className="hint">
+                  The limiting-stock tray this product is built on. Its remaining
+                  stock becomes this preset's inventory.
+                </div>
+              </div>
 
               <div>
                 <div className="subtle" style={{ marginBottom: 6 }}>Materials used</div>

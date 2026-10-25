@@ -2,34 +2,49 @@ import { money } from '../util';
 
 const METRICS = [
   { key: 'count', label: 'Count' },
-  { key: 'revenue', label: 'Revenue' },
-  { key: 'profit', label: 'Profit' },
+  { key: 'revenue', label: 'Revenue', money: true },
+  { key: 'profit', label: 'Profit', money: true },
 ];
 
 // Horizontal bar graph, single series, bars left -> right. `rows` is
-// [{ label, count, revenue, profit }]. Metric toggle lives in the header.
-export default function BarGraph({ title, rows, metric, onMetric }) {
-  const key = METRICS.some((m) => m.key === metric) ? metric : 'count';
-  const sorted = [...rows].sort((a, b) => (b[key] || 0) - (a[key] || 0));
+// [{ label, ...numeric fields }]. With the default metrics a Count / Revenue /
+// Profit toggle lives in the header; pass a single-item `metrics` to show one
+// fixed measure (no toggle). `keepOrder` keeps the rows' given order (e.g. by
+// price or by date) instead of sorting largest first.
+export default function BarGraph({
+  title,
+  rows,
+  metric,
+  onMetric,
+  metrics = METRICS,
+  keepOrder = false,
+}) {
+  const m = metrics.find((x) => x.key === metric) || metrics[0];
+  const key = m.key;
+  const sorted = keepOrder
+    ? rows
+    : [...rows].sort((a, b) => (b[key] || 0) - (a[key] || 0));
   const max = Math.max(1, ...sorted.map((r) => Math.abs(Number(r[key]) || 0)));
-  const fmt = key === 'count' ? (v) => String(v) : (v) => money(v);
+  const fmt = m.money ? (v) => money(v) : (v) => String(v);
 
   return (
     <div className="bargraph">
       <div className="bg-head">
         <h3>{title}</h3>
-        <div className="pill-group">
-          {METRICS.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              className={key === m.key ? 'pill active' : 'pill'}
-              onClick={() => onMetric(m.key)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {metrics.length > 1 && (
+          <div className="pill-group">
+            {metrics.map((x) => (
+              <button
+                key={x.key}
+                type="button"
+                className={key === x.key ? 'pill active' : 'pill'}
+                onClick={() => onMetric(x.key)}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {sorted.length === 0 ? (

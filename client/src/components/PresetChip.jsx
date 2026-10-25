@@ -66,7 +66,7 @@ export default function PresetChip({ presets, onPick, disabled }) {
             <button
               key={p.id}
               type="button"
-              className="cm-item"
+              className={'cm-item' + (p.inventory != null && p.inventory <= 0 ? ' sold-out' : '')}
               onClick={(e) => {
                 e.stopPropagation();
                 setOpen(false);
@@ -74,6 +74,11 @@ export default function PresetChip({ presets, onPick, disabled }) {
               }}
             >
               {p.name} ({money(p.price)})
+              {p.inventory != null && (
+                <span className={'cm-meta' + (p.inventory <= 0 ? ' out' : '')}>
+                  {p.inventory <= 0 ? 'Sold out' : `— ${p.inventory} left`}
+                </span>
+              )}
             </button>
           ))}
         </div>

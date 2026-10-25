@@ -10,6 +10,7 @@ import {
   validateProductDraft,
   formToMethod,
   validateMethodForm,
+  trayWarnings,
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
@@ -55,6 +56,8 @@ export default function NewOrder() {
     for (const x of materials) m[x.id] = x;
     return m;
   }, [materials]);
+
+  const warnings = useMemo(() => trayWarnings(products, materials), [products, materials]);
 
   const named = products.filter((p) => p.name.trim());
   const costOf = (p) =>
@@ -144,6 +147,7 @@ export default function NewOrder() {
             presets={presets}
             deliveryLocations={deliveryLocations}
             onChange={(next) => setProduct(i, next)}
+            warnings={warnings[p._key]}
             onDuplicate={() => duplicateProduct(i)}
             onRemove={products.length > 1 ? () => removeProduct(i) : null}
           />

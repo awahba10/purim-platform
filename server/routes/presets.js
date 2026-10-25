@@ -4,18 +4,59 @@ const { mapMaterials, cleanMaterials, attachMaterials } = require('../lib/produc
 
 const LINK = { linkTable: 'preset_materials', fk: 'preset_id' };
 
+// Inventory is derived: the anchor tray's current stock. Only counts while the
+// anchor is still flagged as limiting stock; otherwise the preset has no anchor.
+const SELECT_PRESET = `
+  SELECT ps.*,
+         CASE WHEN am.is_limiting THEN ps.anchor_material_id END AS anchor_id,
+         CASE WHEN am.is_limiting THEN am.name END AS anchor_name,
+         CASE WHEN am.is_limiting THEN am.quantity END AS anchor_quantity
+    FROM presets ps
+    LEFT JOIN materials am ON am.id = ps.anchor_material_id
+`;
+
 const toPreset = (p) => {
   const materials = mapMaterials(p.materials);
+  const anchored = p.anchor_id != null;
   return {
     ...p,
     price: Number(p.price),
     cost: materials.reduce((sum, m) => sum + m.line_cost, 0),
+    anchor_material_id: anchored ? Number(p.anchor_id) : null,
+    anchor_name: anchored ? p.anchor_name : null,
+    inventory: anchored ? Number(p.anchor_quantity) : null,
     materials,
   };
 };
 
+// Validate an incoming anchor id: must be a limiting-stock material (or null).
+async function cleanAnchor(db, raw) {
+  if (raw === undefined) return undefined;
+  const id = Number(raw);
+  if (!id) return null;
+  const { rows } = await db.query(
+    'SELECT id FROM materials WHERE id = $1 AND is_limiting',
+    [id]
+  );
+  if (!rows.length) {
+    throw Object.assign(new Error('Anchor tray must be a limiting-stock material'), {
+      status: 400,
+    });
+  }
+  return id;
+}
+
+// The anchor tray is always one of the preset's materials (quantity 1 if added).
+function withAnchor(materials, anchorId) {
+  const list = Array.isArray(materials) ? [...materials] : [];
+  if (anchorId && !list.some((m) => Number(m && m.material_id) === anchorId)) {
+    list.push({ material_id: anchorId, quantity_used: 1 });
+  }
+  return list;
+}
+
 async function fetchPreset(db, id) {
-  const { rows } = await db.query('SELECT * FROM presets WHERE id = $1', [id]);
+  const { rows } = await db.query(`${SELECT_PRESET} WHERE ps.id = $1`, [id]);
   if (!rows.length) return null;
   const withMats = await attachMaterials(db, rows, LINK);
   return toPreset(withMats[0]);
@@ -35,7 +76,7 @@ async function replaceLinks(client, presetId, materials) {
 // LIST every preset with its materials and computed cost.
 router.get('/', async (req, res, next) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM presets ORDER BY name');
+    const { rows } = await pool.query(`${SELECT_PRESET} ORDER BY ps.name`);
     const withMats = await attachMaterials(pool, rows, LINK);
     res.json(withMats.map(toPreset));
   } catch (err) {
@@ -52,11 +93,12 @@ router.post('/', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const anchorId = (await cleanAnchor(client, req.body.anchor_material_id)) || null;
     const { rows } = await client.query(
-      'INSERT INTO presets (name, price) VALUES ($1, $2) RETURNING id',
-      [name.trim(), Number(price) || 0]
+      'INSERT INTO presets (name, price, anchor_material_id) VALUES ($1, $2, $3) RETURNING id',
+      [name.trim(), Number(price) || 0, anchorId]
     );
-    await replaceLinks(client, rows[0].id, materials);
+    await replaceLinks(client, rows[0].id, withAnchor(materials, anchorId));
     await client.query('COMMIT');
     res.status(201).json(await fetchPreset(pool, rows[0].id));
   } catch (err) {
@@ -81,9 +123,14 @@ router.patch('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Preset not found' });
     }
 
+    const anchorId = await cleanAnchor(client, req.body.anchor_material_id);
     const sets = [];
     const vals = [];
     let i = 1;
+    if (anchorId !== undefined) {
+      sets.push(`anchor_material_id = $${i++}`);
+      vals.push(anchorId);
+    }
     if (name !== undefined && String(name).trim()) {
       sets.push(`name = $${i++}`);
       vals.push(String(name).trim());
@@ -100,7 +147,7 @@ router.patch('/:id', async (req, res, next) => {
       );
     }
     if (Array.isArray(materials)) {
-      await replaceLinks(client, req.params.id, materials);
+      await replaceLinks(client, req.params.id, withAnchor(materials, anchorId));
     }
     await client.query('COMMIT');
     res.json(await fetchPreset(pool, req.params.id));

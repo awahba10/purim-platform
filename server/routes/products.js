@@ -9,6 +9,7 @@ const {
 
 const SELECT_PRODUCT = `
   SELECT p.*, o.ticket_number, o.customer_name, o.payment_status,
+         o.payment_method, o.phone, o.created_at AS order_created_at,
          b.name AS batch_name
     FROM products p
     JOIN orders o ON o.id = p.order_id
