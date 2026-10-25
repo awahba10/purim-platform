@@ -347,3 +347,21 @@ export function catalogWithReturned(catalog, returned) {
     back[m.id] ? { ...m, quantity: Number(m.quantity) + back[m.id] } : m
   );
 }
+
+// --- Trays vs. regular materials (display only) -----------------------------
+// A tray is stored as one of a product's materials, like before; it's just
+// shown separately. Saved materials carry is_limiting; drafts look it up in
+// the materials catalog.
+export function splitTrays(materials, catalog) {
+  const limitingIds = catalog
+    ? new Set(catalog.filter((m) => m.is_limiting).map((m) => m.id))
+    : null;
+  const isTray = (m) => (limitingIds ? limitingIds.has(m.material_id) : !!m.is_limiting);
+  const trays = [];
+  const rest = [];
+  for (const m of materials || []) (isTray(m) ? trays : rest).push(m);
+  return { trays, rest };
+}
+
+export const matText = (list, nameOf = (m) => m.material_name) =>
+  list.map((m) => `${nameOf(m)} ×${m.quantity_used}`).join(', ');

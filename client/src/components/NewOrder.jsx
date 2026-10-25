@@ -14,6 +14,7 @@ import {
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
+import MaterialsList from './MaterialsList';
 import { useSeason } from '../season';
 
 export default function NewOrder() {
@@ -53,11 +54,6 @@ export default function NewOrder() {
       return [...ps.slice(0, i + 1), copy, ...ps.slice(i + 1)];
     });
 
-  const byId = useMemo(() => {
-    const m = {};
-    for (const x of materials) m[x.id] = x;
-    return m;
-  }, [materials]);
 
   const stockErrors = useMemo(
     () => trayErrors(products, materials),
@@ -200,12 +196,8 @@ export default function NewOrder() {
                 <span>{money(Number(p.price) || 0)}</span>
               </div>
               <div className="subtle">
-                {p.materials.length
-                  ? p.materials
-                      .map((m) => `${byId[m.material_id]?.name || '?'} ×${m.quantity_used}`)
-                      .join(', ')
-                  : 'No materials'}
-                {'  ·  cost '}
+                <MaterialsList materials={p.materials} catalog={materials} />
+                {'cost '}
                 {money(costOf(p))}
                 {'  ·  '}
                 {p.fulfillment === 'Pickup'

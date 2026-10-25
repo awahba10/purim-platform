@@ -4,6 +4,7 @@ import { money, suggestedCostOf, qtyOf } from '../util';
 import MaterialPicker from './MaterialPicker';
 import AnchorChip from './AnchorChip';
 import InventoryBadge from './InventoryBadge';
+import MaterialsList from './MaterialsList';
 import { useSeason } from '../season';
 
 const COLUMNS = [
@@ -201,11 +202,7 @@ export default function Premade() {
                   <InventoryBadge value={p.inventory} />
                 </td>
                 <td className="subtle">
-                  {p.materials.length
-                    ? p.materials
-                        .map((m) => `${m.material_name} ×${m.quantity_used}`)
-                        .join(', ')
-                    : '—'}
+                  <MaterialsList materials={p.materials} empty="—" />
                 </td>
                 <td className="right">
                   {!readOnly && (
@@ -270,9 +267,48 @@ export default function Premade() {
                   onPick={setAnchor}
                 />
                 <div className="hint">
-                  The limiting-stock tray this product is built on. Its remaining
-                  stock becomes this preset's inventory.
+                  The limiting-stock tray this product is built on. It counts in the
+                  cost, and its remaining stock becomes this preset's inventory.
                 </div>
+                {(() => {
+                  // Any other tray saved in this preset's materials (from before
+                  // trays had their own field) — shown so it isn't hidden.
+                  const others = editing.draft.materials.filter(
+                    (m) =>
+                      m.material_id !== editing.draft.anchor_material_id &&
+                      trays.some((t) => t.id === m.material_id)
+                  );
+                  if (!others.length) return null;
+                  return (
+                    <div className="hint">
+                      Also uses tray:{' '}
+                      {others.map((m, i) => (
+                        <span key={m.material_id}>
+                          {i > 0 && ', '}
+                          {(trays.find((t) => t.id === m.material_id) || {}).name} ×
+                          {m.quantity_used}{' '}
+                          <button
+                            type="button"
+                            className="linkbtn"
+                            onClick={() =>
+                              setEditing((c) => ({
+                                ...c,
+                                draft: {
+                                  ...c.draft,
+                                  materials: c.draft.materials.filter(
+                                    (x) => x.material_id !== m.material_id
+                                  ),
+                                },
+                              }))
+                            }
+                          >
+                            remove
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div>

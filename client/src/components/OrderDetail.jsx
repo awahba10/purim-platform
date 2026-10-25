@@ -13,6 +13,7 @@ import {
 } from '../util';
 import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
+import MaterialsList from './MaterialsList';
 import { useSeason } from '../season';
 
 const PAYMENT = ['Paid', 'Partially Paid', 'Not Paid'];
@@ -208,13 +209,12 @@ export default function OrderDetail({ id, onClose, onChanged }) {
 
   // Tray stock check for the add/edit product modal. When editing, the
   // product's current trays count as available again.
+  const modalCatalog =
+    productModal && productModal.mode === 'edit'
+      ? catalogWithReturned(materials, productModal.product.materials)
+      : materials;
   const modalStockErrors = productModal
-    ? trayErrors(
-        [productModal.draft],
-        productModal.mode === 'edit'
-          ? catalogWithReturned(materials, productModal.product.materials)
-          : materials
-      )[productModal.draft._key] || []
+    ? trayErrors([productModal.draft], modalCatalog)[productModal.draft._key] || []
     : [];
 
   const saveProduct = async () => {
@@ -392,12 +392,8 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                   <span>{money(p.price)}</span>
                 </div>
                 <div className="subtle">
-                  {p.materials.length
-                    ? p.materials
-                        .map((m) => `${m.material_name} ×${m.quantity_used}`)
-                        .join(', ')
-                    : 'No materials'}
-                  {'  ·  cost '}
+                  <MaterialsList materials={p.materials} />
+                  {'cost '}
                   {money(p.cost)}
                   {'  ·  profit '}
                   {money(p.profit)}
@@ -504,7 +500,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
             {error && <div className="error">{error}</div>}
             <ProductFields
               value={productModal.draft}
-              catalog={materials}
+              catalog={modalCatalog}
               presets={presets}
               deliveryLocations={deliveryLocations}
               onChange={(next) => setProductModal((pm) => ({ ...pm, draft: next }))}

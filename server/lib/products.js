@@ -4,6 +4,7 @@ const mapMaterials = (list) =>
   (list || []).map((m) => ({
     material_id: m.material_id,
     material_name: m.material_name,
+    is_limiting: Boolean(m.is_limiting), // a tray — shown on its own "Tray" line
     unit_cost: Number(m.unit_cost),
     quantity_used: Number(m.quantity_used),
     line_cost: Number(m.unit_cost) * Number(m.quantity_used),
@@ -97,7 +98,7 @@ async function attachMaterials(db, rows, { linkTable, fk }) {
   if (!rows.length) return [];
   const { rows: links } = await db.query(
     `SELECT lk.${fk} AS owner_id, lk.material_id, lk.quantity_used,
-            m.name AS material_name, m.cost AS unit_cost
+            m.name AS material_name, m.cost AS unit_cost, m.is_limiting
        FROM ${linkTable} lk
        JOIN materials m ON m.id = lk.material_id
       WHERE lk.${fk} = ANY($1::int[])

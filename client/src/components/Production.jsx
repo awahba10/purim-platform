@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useSeason } from '../season';
+import MaterialsList from './MaterialsList';
 
 // Group every product row (across all orders) by product name, with tallies.
 function buildGroups(products) {
@@ -31,13 +32,6 @@ function buildGroups(products) {
   return [...map.values()].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   );
-}
-
-function matLine(p) {
-  if (!p.materials || !p.materials.length) return 'No materials';
-  return p.materials
-    .map((m) => `${m.material_name} ×${m.quantity_used}`)
-    .join(', ');
 }
 
 export default function Production() {
@@ -124,7 +118,6 @@ export default function Production() {
             </p>
 
             {current.items.map((p) => {
-              const long = (p.materials || []).length > 3;
               const open = openId === p.id;
               return (
                 <div className="product-card" key={p.id}>
@@ -164,37 +157,12 @@ export default function Production() {
                   </div>
 
                   <div className="subtle">
-                    <strong>Materials: </strong>
-                    {long && !open ? (
-                      <>
-                        {(p.materials || [])
-                          .slice(0, 3)
-                          .map((m) => `${m.material_name} ×${m.quantity_used}`)
-                          .join(', ')}
-                        {' … '}
-                        <button
-                          className="linkbtn"
-                          onClick={() => setOpenId(p.id)}
-                        >
-                          show all {p.materials.length}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {matLine(p)}
-                        {long && (
-                          <>
-                            {'  '}
-                            <button
-                              className="linkbtn"
-                              onClick={() => setOpenId(null)}
-                            >
-                              show less
-                            </button>
-                          </>
-                        )}
-                      </>
-                    )}
+                    <MaterialsList
+                      materials={p.materials}
+                      limit={3}
+                      open={open}
+                      onToggle={() => setOpenId(open ? null : p.id)}
+                    />
                   </div>
                 </div>
               );

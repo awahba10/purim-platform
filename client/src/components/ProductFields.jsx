@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { money, round2, suggestedCostOf, presetToDraftPatch, DELIVERY_QUICK } from '../util';
 import MaterialPicker from './MaterialPicker';
 import PresetChip from './PresetChip';
+import AnchorChip from './AnchorChip';
 
 function Addon({ label, hint, on, onToggle, children }) {
   return (
@@ -42,6 +43,30 @@ export default function ProductFields({
     if (!value.costTouched) next.cost = String(round2(suggestedCostOf(materials, catalog)));
     onChange(next);
   };
+
+  // The tray is stored as one of the product's materials (so it still counts
+  // in cost and stock); this field just picks it separately.
+  const trayCatalog = catalog.filter((m) => m.is_limiting);
+  const trayIds = new Set(trayCatalog.map((m) => m.id));
+  const trayEntries = value.materials.filter((m) => trayIds.has(m.material_id));
+  const mainTray = trayEntries[0] || null;
+  const extraTrays = trayEntries.slice(1);
+  const trayName = (id) => (trayCatalog.find((m) => m.id === id) || {}).name || `#${id}`;
+
+  const setTray = (id) => {
+    let mats = value.materials.filter((m) => !mainTray || m.material_id !== mainTray.material_id);
+    if (id != null && !mats.some((m) => m.material_id === id)) {
+      mats = [{ material_id: id, quantity_used: mainTray ? mainTray.quantity_used : 1 }, ...mats];
+    }
+    setMaterials(mats);
+  };
+  const setTrayQty = (qty) =>
+    setMaterials(
+      value.materials.map((m) =>
+        mainTray && m.material_id === mainTray.material_id ? { ...m, quantity_used: qty } : m
+      )
+    );
+  const removeTray = (id) => setMaterials(value.materials.filter((m) => m.material_id !== id));
 
   const costDiffers =
     String(round2(Number(value.cost) || 0)) !== String(round2(suggested));
@@ -106,6 +131,50 @@ export default function ProductFields({
             placeholder="Chocolate & wine tray"
           />
         </label>
+
+        <div>
+          <div className="fld-label">Tray</div>
+          <div className="tray-field">
+            <AnchorChip
+              value={mainTray ? mainTray.material_id : null}
+              trays={trayCatalog}
+              onPick={setTray}
+              placeholder={trayCatalog.length ? 'No tray — choose one' : 'No trays set up'}
+              noneLabel="No tray"
+              disableSoldOut
+            />
+            {mainTray && (
+              <label className="tray-qty">
+                ×
+                <input
+                  type="number"
+                  min="1"
+                  value={mainTray.quantity_used}
+                  onChange={(e) => setTrayQty(e.target.value)}
+                  aria-label="Trays used"
+                />
+              </label>
+            )}
+          </div>
+          {extraTrays.length > 0 && (
+            <div className="hint">
+              Also uses:{' '}
+              {extraTrays.map((t, i) => (
+                <span key={t.material_id}>
+                  {i > 0 && ', '}
+                  {trayName(t.material_id)} ×{t.quantity_used}{' '}
+                  <button
+                    type="button"
+                    className="linkbtn"
+                    onClick={() => removeTray(t.material_id)}
+                  >
+                    remove
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div>
           <div className="fld-label">Materials used</div>

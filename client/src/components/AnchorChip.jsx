@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 
-// "Anchor tray" chip + popup for a premade product, styled like the batch chip.
-// Lists only limiting-stock materials, each with its remaining count.
-export default function AnchorChip({ value, trays, onPick, disabled }) {
+// Tray chip + popup, styled like the batch chip. Lists only limiting-stock
+// materials, each with its remaining count. Used as the premade product's
+// "Anchor tray" and as a product's "Tray" field. `disableSoldOut` stops a
+// sold-out tray being picked (the current one always stays shown).
+export default function AnchorChip({
+  value,
+  trays,
+  onPick,
+  disabled,
+  placeholder = 'Choose anchor tray',
+  noneLabel = 'No anchor tray',
+  disableSoldOut = false,
+}) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
@@ -57,7 +67,7 @@ export default function AnchorChip({ value, trays, onPick, disabled }) {
         disabled={disabled}
         onClick={toggle}
       >
-        {current ? current.name : 'Choose anchor tray'}
+        {current ? current.name : placeholder}
       </button>
 
       {open && pos && (
@@ -72,23 +82,31 @@ export default function AnchorChip({ value, trays, onPick, disabled }) {
               the Materials tab.
             </div>
           )}
-          {trays.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={'cm-item' + (t.id === value ? ' current' : '')}
-              onClick={pick(t.id)}
-            >
-              {t.name}
-              <span className={'cm-meta' + (t.quantity <= 0 ? ' out' : '')}>
-                {t.quantity <= 0 ? 'Sold out' : `${t.quantity} left`}
-              </span>
-              {t.id === value ? ' ✓' : ''}
-            </button>
-          ))}
+          {trays.map((t) => {
+            const out = t.quantity <= 0;
+            const blocked = disableSoldOut && out && t.id !== value;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                className={
+                  'cm-item' + (t.id === value ? ' current' : '') + (blocked ? ' sold-out' : '')
+                }
+                disabled={blocked}
+                title={blocked ? 'Sold out — no trays remaining' : undefined}
+                onClick={pick(t.id)}
+              >
+                {t.name},
+                <span className={'cm-meta' + (out ? ' out' : '')}>
+                  {out ? 'sold out' : `${t.quantity} left`}
+                </span>
+                {t.id === value ? ' ✓' : ''}
+              </button>
+            );
+          })}
           {value != null && (
             <button type="button" className="cm-item danger" onClick={pick(null)}>
-              No anchor tray
+              {noneLabel}
             </button>
           )}
         </div>

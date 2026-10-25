@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { money } from '../util';
 
-// Material selector. Every material shows as a tappable chip; the search box
-// only filters which chips are shown. `value` is [{ material_id, quantity_used }].
+// Material selector for REGULAR materials. Every non-tray material shows as a
+// tappable chip; the search box only filters which chips are shown. `value` is
+// the full [{ material_id, quantity_used }] list: trays (limiting stock) are
+// kept in it untouched but neither offered nor listed here — they have their
+// own Tray / Anchor tray field.
 export default function MaterialPicker({ catalog, value, onChange }) {
   const [q, setQ] = useState('');
 
@@ -13,10 +16,13 @@ export default function MaterialPicker({ catalog, value, onChange }) {
   }, [catalog]);
 
   const selectedIds = new Set(value.map((v) => v.material_id));
+  const regular = catalog.filter((m) => !m.is_limiting);
+  const shownValue = value.filter((v) => !(byId[v.material_id] && byId[v.material_id].is_limiting));
 
   const chips = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return catalog
+      .filter((m) => !m.is_limiting)
       .filter((m) => !selectedIds.has(m.id))
       .filter((m) => !needle || m.name.toLowerCase().includes(needle));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -39,7 +45,7 @@ export default function MaterialPicker({ catalog, value, onChange }) {
       <div className="mp-chips">
         {chips.length === 0 && (
           <span className="subtle">
-            {catalog.length === 0
+            {regular.length === 0
               ? 'No materials yet — add them in the Materials tab.'
               : 'No matching materials.'}
           </span>
@@ -58,9 +64,9 @@ export default function MaterialPicker({ catalog, value, onChange }) {
         ))}
       </div>
 
-      {value.length > 0 && (
+      {shownValue.length > 0 && (
         <div className="mp-selected">
-          {value.map((v) => {
+          {shownValue.map((v) => {
             const m = byId[v.material_id];
             const line = (m ? Number(m.cost) : 0) * (Number(v.quantity_used) || 0);
             return (

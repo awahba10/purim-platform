@@ -18,6 +18,7 @@ import LabelSettings from './LabelSettings';
 import CreateBatchModal from './CreateBatchModal';
 import BatchChip from './BatchChip';
 import FilterPanel from './FilterPanel';
+import MaterialsList from './MaterialsList';
 import { useSeason, seasonSlug } from '../season';
 
 const COLUMNS = [
@@ -54,8 +55,20 @@ const CSV_COLUMNS = [
   { label: 'Price', get: (p) => p.price.toFixed(2) },
   { label: 'Profit', get: (p) => p.profit.toFixed(2) },
   {
+    label: 'Tray',
+    get: (p) =>
+      p.materials
+        .filter((m) => m.is_limiting)
+        .map((m) => `${m.material_name} x${m.quantity_used}`)
+        .join('; '),
+  },
+  {
     label: 'Materials',
-    get: (p) => p.materials.map((m) => `${m.material_name} x${m.quantity_used}`).join('; '),
+    get: (p) =>
+      p.materials
+        .filter((m) => !m.is_limiting)
+        .map((m) => `${m.material_name} x${m.quantity_used}`)
+        .join('; '),
   },
   { label: 'Notes', get: (p) => p.notes || '' },
   { label: 'Gift message', get: (p) => p.gift_message || '' },
@@ -340,11 +353,11 @@ export default function Products() {
     );
 
   // The product's current trays count as available again while editing.
+  const editCatalog = editing
+    ? catalogWithReturned(materials, editing.product.materials)
+    : materials;
   const editStockErrors = editing
-    ? trayErrors(
-        [editing.draft],
-        catalogWithReturned(materials, editing.product.materials)
-      )[editing.draft._key] || []
+    ? trayErrors([editing.draft], editCatalog)[editing.draft._key] || []
     : [];
 
   const save = async () => {
@@ -539,11 +552,7 @@ export default function Products() {
                   />
                 </td>
                 <td className="subtle">
-                  {p.materials.length
-                    ? p.materials
-                        .map((m) => `${m.material_name} ×${m.quantity_used}`)
-                        .join(', ')
-                    : '—'}
+                  <MaterialsList materials={p.materials} empty="—" />
                 </td>
                 <td className="right" onClick={(e) => e.stopPropagation()}>
                   {!readOnly && (
@@ -581,7 +590,7 @@ export default function Products() {
             {error && <div className="error">{error}</div>}
             <ProductFields
               value={editing.draft}
-              catalog={materials}
+              catalog={editCatalog}
               deliveryLocations={deliveryLocations}
               onChange={(next) => setEditing((cur) => ({ ...cur, draft: next }))}
               stockErrors={editStockErrors}
