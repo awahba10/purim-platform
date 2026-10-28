@@ -79,7 +79,7 @@ export default function AnchorChip({
           {trays.length === 0 && (
             <div className="cm-empty">
               No limiting-stock materials yet — flag a tray as “Limiting stock” on
-              the Materials tab.
+              the Inventory tab.
             </div>
           )}
           {trays.map((t) => {

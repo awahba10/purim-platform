@@ -84,8 +84,8 @@ export default function SeasonBar() {
           <span>
             🎉 <strong>{s.notice.name}</strong> has started. Every stock count is at 0 —
             enter your starting quantities in the{' '}
-            <Link to="/materials" onClick={s.dismissNotice}>
-              Materials tab
+            <Link to="/inventory" onClick={s.dismissNotice}>
+              Inventory tab
             </Link>
             , especially the trays (stock and starting quantity).
           </span>

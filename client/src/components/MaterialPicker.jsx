@@ -46,7 +46,7 @@ export default function MaterialPicker({ catalog, value, onChange }) {
         {chips.length === 0 && (
           <span className="subtle">
             {regular.length === 0
-              ? 'No materials yet — add them in the Materials tab.'
+              ? 'No materials yet — add them in the Inventory tab.'
               : 'No matching materials.'}
           </span>
         )}

@@ -36,8 +36,11 @@ export default function App() {
             <Route path="/new-order" element={<NewOrder />} />
             <Route path="/orders" element={<AllOrders />} />
             <Route path="/orders/:id" element={<AllOrders />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/materials" element={<Materials />} />
+            <Route path="/items" element={<Products />} />
+            <Route path="/inventory" element={<Materials />} />
+            {/* Old addresses from before the tabs were renamed */}
+            <Route path="/products" element={<Navigate to="/items" replace />} />
+            <Route path="/materials" element={<Navigate to="/inventory" replace />} />
             <Route path="/premade" element={<Premade />} />
             <Route path="/delivery-cost" element={<DeliveryCost />} />
             <Route path="/batches" element={<Batches />} />

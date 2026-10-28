@@ -396,7 +396,7 @@ export default function Products() {
   return (
     <div className="panel">
       <div className="panel-head">
-        <h1>Products</h1>
+        <h1>Items</h1>
         <div className="ph-actions">
           <button
             className={selectMode ? 'primary' : ''}

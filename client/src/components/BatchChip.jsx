@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 // A chip (styled like the Made/Not-made chips) that opens a small popup for
 // assigning / reassigning / removing a product's delivery batch. Used on the
-// Products tab and inside a batch's detail view.
+// Items tab and inside a batch's detail view.
 export default function BatchChip({
   value, // current batch_id or null
   currentName, // current batch_name or null

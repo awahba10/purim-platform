@@ -153,7 +153,7 @@ export default function Premade() {
         Reusable recipes to speed up New Order. Pick one while adding a product and
         it fills in the name, materials, cost, and price — all still editable. A
         preset's <strong>Inventory</strong> is its anchor tray's remaining stock
-        (set on the Materials tab); presets sharing a tray show the same number.
+        (set on the Inventory tab); presets sharing a tray show the same number.
       </p>
 
       <p className="hint">

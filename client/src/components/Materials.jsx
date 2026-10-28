@@ -234,7 +234,7 @@ export default function Materials() {
 
   return (
     <div className="panel">
-      <h1>Materials</h1>
+      <h1>Inventory</h1>
       <p className="subtle">
         Supplies on hand. "Cost" is the price per unit — it feeds each product's
         suggested cost. Stock drops automatically when a product uses a material.

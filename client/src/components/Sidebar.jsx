@@ -4,7 +4,7 @@ import SeasonSwitcher from './SeasonSwitcher';
 export default function Sidebar({ nav }) {
   return (
     <nav className="sidebar">
-      <div className="brand">🌸 Purim Platform</div>
+      <div className="brand">🌸 MW Purim</div>
       <ul>
         {nav.map((t) => (
           <li key={t.path}>

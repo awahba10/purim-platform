@@ -342,7 +342,7 @@ export default function BatchDetail({ id, onBack, onChanged }) {
 
           {batch.products.length === 0 && (
             <p className="subtle">
-              No products in this batch yet. Add some from the Products tab.
+              No products in this batch yet. Add some from the Items tab.
             </p>
           )}
 

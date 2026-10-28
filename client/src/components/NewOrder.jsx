@@ -239,7 +239,7 @@ export default function NewOrder() {
           {saving ? 'Saving…' : 'Create order'}
         </button>
         {materials.length === 0 && (
-          <p className="subtle">Tip: add your materials in the Materials tab first.</p>
+          <p className="subtle">Tip: add your materials in the Inventory tab first.</p>
         )}
       </form>
     </div>

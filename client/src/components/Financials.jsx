@@ -69,7 +69,7 @@ function SellThrough({ rows, total, filtered }) {
       {rows.length === 0 ? (
         <p className="subtle">
           No limiting-stock materials yet — flag trays as “Limiting stock” on the
-          Materials tab.
+          Inventory tab.
         </p>
       ) : (
         <>
@@ -79,7 +79,7 @@ function SellThrough({ rows, total, filtered }) {
               <span>
                 {total.start
                   ? `${total.sold} / ${total.start} sold · ${pctText(total.pct)}`
-                  : 'Set starting quantities on the Materials tab'}
+                  : 'Set starting quantities on the Inventory tab'}
               </span>
             </div>
             <span className="bg-track">
@@ -108,7 +108,7 @@ function SellThrough({ rows, total, filtered }) {
                   <strong>{r.label}</strong>
                   <span className="subtle">
                     {r.start == null
-                      ? 'Set a starting quantity on the Materials tab'
+                      ? 'Set a starting quantity on the Inventory tab'
                       : `${r.sold} / ${r.start} sold · ${pctText(r.pct)}`}
                   </span>
                 </div>
@@ -352,7 +352,7 @@ export default function Financials() {
     const card = (label, value, csv) => ({ label, value, csv });
 
     return {
-      title: `Purim Platform — Financials · ${current.name}`,
+      title: `MW Purim — Financials · ${current.name}`,
       season: current.name,
       fileSlug: seasonSlug(current),
       generated: new Date(),

@@ -70,7 +70,7 @@ export default function Batches() {
       </div>
       <p className="subtle">
         Group products into a delivery run, set their order, and open the whole
-        route in Google Maps. Add products to a batch from the Products tab.
+        route in Google Maps. Add products to a batch from the Items tab.
       </p>
       {error && <div className="error">{error}</div>}
 

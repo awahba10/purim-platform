@@ -1,11 +1,31 @@
 :root {
-  --bg: #f6f7f9;
-  --panel: #ffffff;
-  --ink: #1f2430;
-  --muted: #6b7280;
-  --line: #e5e7eb;
-  --brand: #7c3aed;
-  --brand-soft: #f3effe;
+  /* Site palette — "Cozy Coffee Neutrals":
+     Linen #F5F1EA · Khaki #D7C9B8 · Camel #B2967D · Cocoa #7D5A44 · Espresso #4A342A */
+  --bg: #f5f1ea; /* Linen: page background */
+  --panel: #fffdfa; /* warm white: cards, tables, inputs */
+  --surface-2: #faf6f0; /* table headers, bars */
+  --surface-3: #f1ebe2; /* product entry backdrop */
+  --ink: #4a342a; /* Espresso: text */
+  --muted: #735f50; /* secondary text */
+  --line: #e4d9cb; /* soft khaki borders */
+  --line-strong: #d7c9b8; /* Khaki */
+  --hover: #f3ece2; /* row / button hover */
+  --hover-soft: #faf5ee;
+  --neutral: #efe8de; /* idle chips */
+  --neutral-line: #e2d6c7;
+  --brand: #7d5a44; /* Cocoa: primary buttons, active tab, accents */
+  --brand-strong: #4a342a; /* Espresso: primary hover */
+  --brand-soft: #efe6da; /* light khaki: selected / active fills */
+  --brand-soft-strong: #e6d8c6;
+  --accent: #b2967d; /* Camel: secondary accent */
+  --tray: #5e4334; /* "Tray" / "Limiting" tags */
+  --tray-bg: #eadccb;
+  --tray-row: #faf4ec;
+  --shadow: 74, 52, 42; /* rgb of Espresso for shadows/overlays */
+
+  /* Status colours — these "tell you something" and stay as they were:
+     green = done (Made / Delivered / Paid), amber = not yet / warning,
+     blue = partway (Some Made / Partially Paid), red = error / destructive. */
   --ok: #15803d;
   --ok-bg: #dcfce7;
   --warn: #b45309;
@@ -31,13 +51,13 @@ button {
   font: inherit;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
   padding: 7px 12px;
   border-radius: 8px;
   color: inherit;
 }
 button:hover {
-  background: #f3f4f6;
+  background: var(--hover);
 }
 button.primary {
   background: var(--brand);
@@ -45,8 +65,8 @@ button.primary {
   border-color: var(--brand);
 }
 button.primary:hover {
-  filter: brightness(1.06);
-  background: var(--brand);
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
 }
 button.danger {
   color: var(--danger);
@@ -68,7 +88,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   width: 100%;
-  background: #fff;
+  background: var(--panel);
   color: inherit;
 }
 input:focus,
@@ -132,7 +152,7 @@ h3 {
 }
 .sidebar button:hover,
 .sidebar a:hover {
-  background: #f3f4f6;
+  background: var(--hover);
 }
 .sidebar button.active,
 .sidebar a.active {
@@ -233,7 +253,7 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 10px;
   margin-top: 12px;
-  background: #fff;
+  background: var(--panel);
 }
 table.grid {
   border-collapse: collapse;
@@ -251,7 +271,7 @@ table.grid tbody tr:last-child td {
   border-bottom: none;
 }
 table.grid th {
-  background: #fafafa;
+  background: var(--surface-2);
   cursor: pointer;
   user-select: none;
   font-size: 12px;
@@ -263,7 +283,7 @@ table.grid tbody tr {
   cursor: pointer;
 }
 table.grid tbody tr:hover {
-  background: #faf8ff;
+  background: var(--hover-soft);
 }
 table.grid td.right,
 table.grid th.right {
@@ -298,14 +318,14 @@ td.right button {
 }
 /* Batch-assignment chip: neutral when unassigned, accented when assigned. */
 .chip-toggle.unset {
-  background: #eef0f2;
+  background: var(--neutral);
   color: var(--muted);
-  border-color: #e2e5e8;
+  border-color: var(--neutral-line);
 }
 .chip-toggle.set {
   background: var(--brand-soft);
-  color: var(--brand);
-  border-color: var(--brand-soft);
+  color: var(--brand-strong);
+  border-color: var(--brand);
 }
 .chip-toggle:hover {
   border-color: var(--brand);
@@ -317,10 +337,10 @@ td.right button {
   min-width: 200px;
   max-height: 260px;
   overflow-y: auto;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(15, 18, 25, 0.18);
+  box-shadow: 0 12px 32px rgba(var(--shadow), 0.18);
   padding: 4px;
 }
 .cm-item {
@@ -334,7 +354,7 @@ td.right button {
   font-size: 13px;
 }
 .cm-item:hover {
-  background: #f3f4f6;
+  background: var(--hover);
 }
 .cm-item.current {
   color: var(--brand);
@@ -386,7 +406,7 @@ td.right button {
   margin: 10px 0;
 }
 .card {
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
@@ -411,7 +431,7 @@ td.right button {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 18, 25, 0.45);
+  background: rgba(var(--shadow), 0.45);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -420,12 +440,12 @@ td.right button {
   z-index: 50;
 }
 .modal {
-  background: #fff;
+  background: var(--panel);
   border-radius: 14px;
   padding: 20px;
   width: 100%;
   max-width: 560px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 20px 60px rgba(var(--shadow), 0.25);
 }
 .modal-head {
   display: flex;
@@ -570,7 +590,7 @@ td.right button {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 14px;
-  background: #f2f3f5;
+  background: var(--surface-3);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -578,7 +598,7 @@ td.right button {
 
 /* The three grouped blocks inside a product entry. */
 .pf-section {
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
@@ -610,7 +630,7 @@ td.right button {
   text-align: left;
   border: none;
   border-radius: 0;
-  background: #fafafa;
+  background: var(--surface-2);
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
@@ -725,7 +745,7 @@ td.right button {
   align-self: flex-start;
   border: 1px dashed var(--brand);
   color: var(--brand);
-  background: #fff;
+  background: var(--panel);
   border-radius: 8px;
   padding: 8px 14px;
 }
@@ -751,7 +771,7 @@ td.right button {
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--panel);
 }
 .chip {
   display: inline-flex;
@@ -759,7 +779,7 @@ td.right button {
   gap: 6px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--panel);
   padding: 5px 10px;
   font-size: 13px;
   white-space: nowrap;
@@ -793,7 +813,7 @@ td.right button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px 8px;
@@ -829,7 +849,7 @@ td.right button {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 14px;
-  background: #fff;
+  background: var(--panel);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -865,7 +885,7 @@ td.right button {
   border-radius: 10px;
   padding: 12px;
   margin: 8px 0;
-  background: #fff;
+  background: var(--panel);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -886,7 +906,7 @@ td.right button {
 }
 .modal-backdrop.layer2 {
   z-index: 60;
-  background: rgba(15, 18, 25, 0.55);
+  background: rgba(var(--shadow), 0.55);
 }
 
 /* --- Label export / settings --- */
@@ -904,7 +924,7 @@ td.right button {
   line-height: 1;
 }
 .icon-btn.gear:hover {
-  background: #f3f4f6;
+  background: var(--hover);
 }
 
 .row-between {
@@ -931,7 +951,7 @@ td.right button {
   background: var(--brand-soft);
 }
 .grid tbody tr.row-selected:hover {
-  background: #ece3fd;
+  background: var(--brand-soft-strong);
 }
 
 .label-flags {
@@ -952,9 +972,9 @@ td.right button {
   border-color: var(--ok-bg);
 }
 .flag.off {
-  background: #eef0f2;
+  background: var(--neutral);
   color: var(--muted);
-  border-color: #eef0f2;
+  border-color: var(--neutral);
 }
 
 /* Sheet-slot picker */
@@ -967,7 +987,7 @@ td.right button {
   aspect-ratio: 1 / 1;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--panel);
   font-size: 12px;
   color: var(--muted);
   display: flex;
@@ -981,12 +1001,12 @@ td.right button {
 .slot.skip {
   background: repeating-linear-gradient(
     45deg,
-    #f1f2f4,
-    #f1f2f4 5px,
-    #e6e8eb 5px,
-    #e6e8eb 10px
+    var(--neutral),
+    var(--neutral) 5px,
+    var(--neutral-line) 5px,
+    var(--neutral-line) 10px
   );
-  color: #b6bbc2;
+  color: var(--accent);
 }
 .slot.fill {
   background: var(--brand);
@@ -1006,7 +1026,7 @@ td.right button {
   cursor: pointer;
 }
 .grid tbody tr.selectable:hover {
-  background: #faf8ff;
+  background: var(--hover-soft);
 }
 .action-bar {
   display: flex;
@@ -1053,7 +1073,7 @@ td.right button {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 16px;
@@ -1068,7 +1088,7 @@ td.right button {
 .batch-row.lifted {
   opacity: 1;
   border-style: solid;
-  box-shadow: 0 10px 26px rgba(15, 18, 25, 0.22);
+  box-shadow: 0 10px 26px rgba(var(--shadow), 0.22);
   z-index: 5;
 }
 /* Where the dragged row will land, shown live while dragging. */
@@ -1195,13 +1215,13 @@ td.right button {
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
-  background: #fff;
+  background: var(--panel);
 }
 .fp-bar {
   width: 100%;
   text-align: left;
   border: none;
-  background: #fafafa;
+  background: var(--surface-2);
   border-radius: 0;
   padding: 9px 12px;
   font-size: 13px;
@@ -1250,7 +1270,7 @@ td.right button {
   align-items: center;
 }
 .fp-cat-head:hover {
-  background: #f6f7f9;
+  background: var(--hover);
 }
 .fp-chips {
   display: flex;
@@ -1267,17 +1287,17 @@ td.right button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: #eef0f2;
+  background: var(--neutral);
   color: var(--muted);
-  border-color: #e2e5e8;
+  border-color: var(--neutral-line);
 }
 .filter-chip:hover {
   border-color: var(--brand);
 }
 .filter-chip.on {
-  background: var(--brand-soft);
-  color: var(--brand);
-  border-color: var(--brand-soft);
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
 }
 .fp-clear {
   align-self: flex-start;
@@ -1359,7 +1379,7 @@ td.right button {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 18px 16px;
@@ -1386,7 +1406,7 @@ td.right button {
   margin: 14px 0 18px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--panel);
 }
 .status-item {
   display: grid;
@@ -1465,8 +1485,8 @@ td.right button {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: var(--info-bg);
-  color: var(--info);
+  background: var(--tray-bg);
+  color: var(--tray);
   vertical-align: 1px;
 }
 .limit-toggle {
@@ -1474,9 +1494,9 @@ td.right button {
   padding: 4px 11px;
   font-size: 12px;
   font-weight: 600;
-  background: #eef0f2;
+  background: var(--neutral);
   color: var(--muted);
-  border-color: #e2e5e8;
+  border-color: var(--neutral-line);
   white-space: nowrap;
 }
 .grid td .limit-toggle {
@@ -1484,9 +1504,9 @@ td.right button {
   margin-top: 6px;
 }
 .limit-toggle.on {
-  background: var(--info-bg);
-  color: var(--info);
-  border-color: var(--info-bg);
+  background: var(--tray-bg);
+  color: var(--tray);
+  border-color: var(--tray-bg);
 }
 .add-bar input.start-qty {
   max-width: 170px;
@@ -1549,7 +1569,7 @@ td.right button {
   margin-bottom: 2px;
 }
 .grid tbody tr.limit-row {
-  background: #f5f9ff;
+  background: var(--tray-row);
 }
 .stock-qty {
   display: inline-flex;
@@ -1598,7 +1618,7 @@ td.right button {
 .st-total .bg-track {
   display: block;
   height: 20px;
-  background: #fff;
+  background: var(--panel);
 }
 
 /* --- Seasons --- */
@@ -1625,11 +1645,11 @@ td.right button {
   max-width: 100%;
 }
 .season-chip:hover {
-  background: #ebe3fd;
+  background: var(--brand-soft-strong);
 }
 .season-chip.closed {
-  border-color: #c9ccd2;
-  background: #eef0f2;
+  border-color: var(--line-strong);
+  background: var(--neutral);
   color: var(--ink);
 }
 .sc-name {
@@ -1642,7 +1662,7 @@ td.right button {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--panel);
   white-space: nowrap;
 }
 .sc-caret {
@@ -1672,7 +1692,7 @@ td.right button {
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 999px;
-  background: #eef0f2;
+  background: var(--neutral);
   color: var(--muted);
 }
 .sm-status.on {
@@ -1715,9 +1735,9 @@ td.right button {
 .locked-msg {
   margin-top: 12px;
   padding: 16px 18px;
-  border: 1px dashed #d6d9de;
+  border: 1px dashed var(--line-strong);
   border-radius: 12px;
-  background: #fff;
+  background: var(--panel);
 }
 .locked-msg p {
   margin: 0 0 6px;
@@ -1756,11 +1776,11 @@ td.right button {
   color: var(--brand);
 }
 .sidebar .season-chip:hover {
-  background: #ebe3fd;
+  background: var(--brand-soft-strong);
 }
 .sidebar .season-chip.closed {
-  border-color: #c9ccd2;
-  background: #eef0f2;
+  border-color: var(--line-strong);
+  background: var(--neutral);
   color: var(--ink);
 }
 .sidebar .season-chip .sc-name {
@@ -1845,11 +1865,11 @@ td.right button {
   vertical-align: 1px;
 }
 .tray-tag {
-  background: var(--info-bg);
-  color: var(--info);
+  background: var(--tray-bg);
+  color: var(--tray);
 }
 .mat-tag {
-  background: #eef0f2;
+  background: var(--neutral);
   color: var(--muted);
 }
 .tray-field {
@@ -1873,4 +1893,10 @@ td.right button {
 }
 .product-fields .tray-qty input {
   width: 70px;
+}
+
+/* Batch name tag on a product card (an identifier, not a status). */
+.badge.tag {
+  background: var(--tray-bg);
+  color: var(--tray);
 }

@@ -386,7 +386,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                       {p.is_delivered ? 'Delivered' : 'Not delivered'}
                     </span>
                     {p.batch_name && (
-                      <span className="badge info"> {p.batch_name}</span>
+                      <span className="badge tag"> {p.batch_name}</span>
                     )}
                   </strong>
                   <span>{money(p.price)}</span>
