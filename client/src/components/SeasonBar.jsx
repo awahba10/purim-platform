@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeason } from '../season';
+import Icon from './Icon';
 
 // Top-of-page closed-season banner and new-season prompt. (The season
 // switcher itself lives in the sidebar — see SeasonSwitcher.)
@@ -53,12 +54,12 @@ export default function SeasonBar() {
           <span>
             {unlocked ? (
               <>
-                ✏️ Editing <strong>{current.name}</strong> (a closed season) — changes are
+                <Icon name="pencil" size={16} /> Editing <strong>{current.name}</strong> (a closed season) — changes are
                 saved to this season.
               </>
             ) : (
               <>
-                🔒 Viewing <strong>{current.name}</strong>, locked
+                <Icon name="lock" size={16} /> Viewing <strong>{current.name}</strong>, locked
               </>
             )}
           </span>
@@ -82,7 +83,7 @@ export default function SeasonBar() {
       {s.notice && s.notice.kind === 'new-season' && (
         <div className="notice season-notice">
           <span>
-            🎉 <strong>{s.notice.name}</strong> has started. Every stock count is at 0 —
+            <Icon name="sparkles" size={16} /> <strong>{s.notice.name}</strong> has started. Every stock count is at 0 —
             enter your starting quantities in the{' '}
             <Link to="/inventory" onClick={s.dismissNotice}>
               Inventory tab

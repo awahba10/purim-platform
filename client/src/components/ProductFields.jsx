@@ -4,6 +4,7 @@ import MaterialPicker from './MaterialPicker';
 import PresetChip from './PresetChip';
 import AnchorChip from './AnchorChip';
 import PickChip from './PickChip';
+import Icon from './Icon';
 
 function Addon({ label, hint, on, onToggle, children }) {
   return (
@@ -103,7 +104,7 @@ export default function ProductFields({
               {collapsed && summary && <span className="pf-summary">{summary}</span>}
               {collapsed && hasProblem && (
                 <span className="pf-problem" title="Something in this product needs attention">
-                  ⚠
+                  <Icon name="alert" size={16} />
                 </span>
               )}
             </button>
@@ -141,7 +142,7 @@ export default function ProductFields({
         {stockWarnings && stockWarnings.length > 0 && (
           <div className="stock-warn">
             {stockWarnings.map((w) => (
-              <div key={w}>⚠ {w}</div>
+              <div key={w}><Icon name="alert" size={16} /> {w}</div>
             ))}
           </div>
         )}
@@ -278,7 +279,7 @@ export default function ProductFields({
 
         <div>
           <div className="fld-label">Pickup or delivery</div>
-          <div className="pill-group">
+          <div className="pill-group seg">
             {['Delivery', 'Pickup'].map((f) => (
               <button
                 type="button"

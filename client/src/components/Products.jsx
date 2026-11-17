@@ -21,6 +21,7 @@ import BatchChip from './BatchChip';
 import FilterPanel from './FilterPanel';
 import MaterialsList from './MaterialsList';
 import { useSeason, seasonSlug } from '../season';
+import Icon from './Icon';
 
 const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
@@ -426,7 +427,7 @@ export default function Products() {
               aria-label="Label settings"
               onClick={() => setShowSettings(true)}
             >
-              ⚙
+              <Icon name="settings" size={18} />
             </button>
           )}
           <button onClick={exportCsv} disabled={products.length === 0}>

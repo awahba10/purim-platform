@@ -32,7 +32,7 @@ export default function BarGraph({
       <div className="bg-head">
         <h3>{title}</h3>
         {metrics.length > 1 && (
-          <div className="pill-group">
+          <div className="pill-group seg">
             {metrics.map((x) => (
               <button
                 key={x.key}

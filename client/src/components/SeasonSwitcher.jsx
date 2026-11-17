@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { useSeason } from '../season';
+import Icon from './Icon';
 
 // Season chip + menu, shown in the sidebar under Financials. Lists every
 // season, switches the whole app, starts a New Season, and can delete an
@@ -76,7 +77,13 @@ export default function SeasonSwitcher() {
       >
         <span className="sc-name">{current.name}</span>
         <span className="sc-status">
-          {current.status === 'Active' ? 'Active' : unlocked ? 'Unlocked' : '🔒'}
+          {current.status === 'Active' ? (
+            'Active'
+          ) : unlocked ? (
+            'Unlocked'
+          ) : (
+            <Icon name="lock" size={14} title="Locked" />
+          )}
         </span>
         <span className="sc-caret">▾</span>
       </button>

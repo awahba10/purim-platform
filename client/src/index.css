@@ -1,21 +1,21 @@
 :root {
   /* Site palette: black and white with greys as accents. */
-  --bg: #f7f7f7; /* page background */
+  --bg: #f4f5f8; /* page background (under the soft wash) */
   --panel: #ffffff; /* cards, tables, inputs */
-  --surface-2: #fafafa; /* table headers, bars */
-  --surface-3: #f2f2f2; /* product entry backdrop */
+  --surface-2: #fafbfc; /* table headers, bars */
+  --surface-3: #f6f7f9; /* product entry backdrop */
   --ink: #111111; /* text */
   --muted: #666666; /* secondary text */
-  --line: #e3e3e3; /* borders */
-  --line-strong: #cfcfcf;
-  --hover: #f0f0f0; /* row / button hover */
-  --hover-soft: #f7f7f7;
-  --neutral: #eeeeee; /* idle chips */
-  --neutral-line: #dddddd;
+  --line: #e7e8ec; /* borders */
+  --line-strong: #d6d8de;
+  --hover: #f1f2f5; /* row / button hover */
+  --hover-soft: #f8f9fb;
+  --neutral: #f0f1f4; /* idle chips */
+  --neutral-line: #e2e4e9;
   --brand: #111111; /* black: primary buttons, active tab, selected chips */
   --brand-strong: #000000; /* primary hover */
-  --brand-soft: #ececec; /* light grey: selected / active fills */
-  --brand-soft-strong: #e0e0e0;
+  --brand-soft: #eceef2; /* light grey: selected / active fills */
+  --brand-soft-strong: #e1e4ea;
   --accent: #8a8a8a; /* mid grey: secondary accent */
   --tray: #3d4470; /* "Tray" / "Limiting" tags (same as the tray category) */
   --tray-bg: #e6e8f3;
@@ -33,6 +33,19 @@
   --cat-expense: #333333; /* charcoal */
   --cat-expense-bg: #e8e8e8;
   --shadow: 0, 0, 0; /* rgb for shadows/overlays */
+
+  /* Glass + depth (see "Glass theme" at the end of this file) */
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 255, 255, 0.82);
+  --glass-edge: rgba(255, 255, 255, 0.75);
+  --glass-blur: saturate(180%) blur(22px);
+  --float: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.05),
+    0 12px 32px rgba(16, 24, 40, 0.05);
+  --float-hover: 0 2px 4px rgba(16, 24, 40, 0.05), 0 8px 20px rgba(16, 24, 40, 0.08),
+    0 20px 44px rgba(16, 24, 40, 0.08);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* Status colours — these "tell you something" and stay as they were:
      green = done (Made / Delivered / Paid), amber = not yet / warning,
@@ -2285,4 +2298,542 @@ td.right button {
   border-bottom: none;
   font-weight: 800;
   font-size: 15px;
+}
+
+
+/* ==========================================================================
+   Glass theme — Apple-style layer on top of everything above.
+   Floating white boxes with soft shadows (no grey outlines), frosted glass on
+   things that float (sidebar, sticky bar, pop-ups, windows), San Francisco
+   type, and gentle motion. Styling only: nothing here changes behaviour.
+   To undo the whole look, delete from this comment to the end of the file.
+   ========================================================================== */
+
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(1100px 700px at 0% 0%, #e7ebf3 0%, rgba(231, 235, 243, 0) 60%),
+    radial-gradient(900px 620px at 100% 0%, #eeebf4 0%, rgba(238, 235, 244, 0) 58%),
+    radial-gradient(1000px 760px at 100% 100%, #e7eff1 0%, rgba(231, 239, 241, 0) 60%),
+    radial-gradient(800px 600px at 0% 100%, #f1eef0 0%, rgba(241, 238, 240, 0) 60%);
+  background-attachment: fixed;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.006em;
+}
+
+/* --- Typography --- */
+h1 {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+.modal-head h2,
+.panel h2 {
+  letter-spacing: -0.015em;
+}
+h3 {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.card-value,
+.be-value,
+table.grid td,
+.mp-line,
+.summary-totals strong {
+  font-variant-numeric: tabular-nums;
+}
+.card-value {
+  font-size: 30px;
+  letter-spacing: -0.025em;
+}
+.be-value {
+  letter-spacing: -0.03em;
+}
+
+/* --- Icons --- */
+.icon {
+  display: inline-block;
+  vertical-align: -0.2em;
+  flex: 0 0 auto;
+}
+button .icon {
+  margin-right: 4px;
+}
+.icon-btn .icon,
+.sidebar .icon {
+  margin-right: 0;
+}
+.stock-warn .icon {
+  margin-right: 4px;
+  vertical-align: -0.25em;
+}
+.pf-problem .icon {
+  vertical-align: -0.2em;
+}
+.fin-lock-ico {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+  border-radius: 18px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--float);
+}
+.icon-btn.gear {
+  display: inline-grid;
+  place-items: center;
+  padding: 7px 9px;
+}
+
+/* --- Buttons --- */
+button,
+.btn-sm,
+.pill,
+.chip,
+.chip-toggle,
+.filter-chip,
+.qs,
+.hub-card,
+.sidebar a,
+.cm-item,
+input,
+select,
+textarea {
+  transition: background-color 160ms var(--ease), border-color 160ms var(--ease),
+    color 160ms var(--ease), box-shadow 200ms var(--ease), transform 160ms var(--ease);
+}
+button {
+  border-color: var(--line);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+button:hover {
+  background: #fff;
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.07);
+}
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+/* Black buttons: lighten to charcoal, lift, and shadow on hover. */
+button.primary,
+.btn-sm.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+button.primary:hover:not(:disabled),
+.btn-sm.primary:hover:not(:disabled) {
+  background: #2c2c2e;
+  border-color: #2c2c2e;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+button.primary:active:not(:disabled),
+.btn-sm.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  background: #000;
+}
+/* Every other selected/black chip gets the same charcoal hover. */
+.pill.active:hover,
+.qs.active:hover,
+.filter-chip.on:hover {
+  background: #2c2c2e;
+  border-color: #2c2c2e;
+  color: #fff;
+}
+/* Delete buttons fill red on hover. */
+button.danger:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* --- Inputs --- */
+input,
+select,
+textarea {
+  border-radius: 10px;
+  border-color: var(--line);
+  background: #fff;
+}
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--line-strong);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
+}
+
+/* --- Layout + sidebar (floating glass panel) --- */
+.layout {
+  align-items: flex-start;
+}
+.sidebar {
+  position: sticky;
+  top: 14px;
+  margin: 14px 0 14px 14px;
+  width: 232px;
+  height: calc(100vh - 28px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  border-right: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  box-shadow: var(--float), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 18px;
+}
+.sidebar .brand-logo {
+  height: 36px;
+  width: auto;
+  display: block;
+}
+.sidebar .brand-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 8px;
+}
+.sidebar ul {
+  gap: 2px;
+}
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  color: #3a3a3c;
+  font-weight: 500;
+  font-size: 14.5px;
+}
+.sidebar a .ico {
+  color: #6e6e73;
+  margin-right: 0;
+  transition: color 160ms var(--ease);
+}
+.sidebar a:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+}
+.sidebar a:hover .ico {
+  color: var(--ink);
+}
+.sidebar a.active {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 4px 12px rgba(16, 24, 40, 0.07);
+}
+.sidebar a.active .ico {
+  color: var(--ink);
+}
+.sidebar .season-switcher {
+  margin-top: auto;
+  padding-top: 14px;
+}
+/* The season chip sits at the bottom, so its menu opens upward. */
+@media (min-width: 801px) {
+  .sidebar .season-menu {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+}
+.sidebar .season-chip {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+.sidebar .season-chip:hover {
+  background: #fff;
+}
+.sidebar .season-chip.closed {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.55);
+}
+.content {
+  padding: 34px 36px 60px;
+  min-width: 0;
+}
+
+/* --- Floating boxes: white, rounder, soft shadow instead of grey outlines --- */
+.card,
+.table-wrap,
+.pf-section,
+.summary-box,
+.product-card,
+.filter-panel,
+.hub-card,
+.status-stack,
+.locked-msg,
+.inv-add,
+.inv-section,
+.fin-lock,
+.breakeven,
+.batch-row {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--float);
+}
+.card,
+.table-wrap,
+.summary-box,
+.filter-panel,
+.hub-card,
+.inv-add,
+.inv-section,
+.fin-lock,
+.breakeven,
+.status-stack,
+.locked-msg {
+  border-radius: var(--radius-lg);
+}
+.pf-section,
+.product-card,
+.batch-row {
+  border-radius: 14px;
+}
+.card {
+  padding: 18px 20px;
+}
+.cards {
+  gap: 16px;
+}
+/* Product entry backdrop on New Order: a quiet tray the white sections sit in. */
+.product-fields {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+.pf-section-title {
+  color: var(--ink);
+  border-bottom-color: var(--line);
+}
+/* Breakeven keeps its red/green meaning; the outline becomes a soft tinted edge. */
+.breakeven.be-down {
+  box-shadow: var(--float), inset 0 0 0 1px rgba(220, 38, 38, 0.18);
+}
+.breakeven.be-up {
+  box-shadow: var(--float), inset 0 0 0 1px rgba(21, 128, 61, 0.18);
+}
+
+/* Clickable boxes lift on hover. */
+.hub-card:hover {
+  background: #fff;
+  border-color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
+  box-shadow: var(--float-hover);
+}
+.hub-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+}
+
+/* --- Tables: white header, hairline rows --- */
+table.grid th {
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+table.grid td {
+  border-bottom-color: #f0f1f4;
+}
+table.grid tbody tr:hover {
+  background: #f8f9fb;
+}
+
+/* --- Frosted glass on floating things --- */
+.chip-menu,
+.season-menu {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  border-radius: 14px;
+  box-shadow: 0 10px 34px rgba(16, 24, 40, 0.14), 0 2px 6px rgba(16, 24, 40, 0.06);
+  padding: 5px;
+  animation: glass-pop 160ms var(--ease);
+}
+.cm-item {
+  border-radius: 9px;
+}
+.products-bar {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  border-radius: 16px;
+  box-shadow: var(--float);
+  top: 10px;
+}
+.modal-backdrop {
+  background: rgba(20, 22, 28, 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: glass-fade 180ms var(--ease);
+}
+.modal {
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.22), 0 4px 14px rgba(16, 24, 40, 0.08);
+  animation: glass-pop 200ms var(--ease);
+}
+.fin-lock {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+@keyframes glass-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes glass-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Browsers without blur: solid white instead of see-through. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sidebar,
+  .chip-menu,
+  .season-menu,
+  .products-bar,
+  .modal,
+  .fin-lock {
+    background: #fff;
+  }
+}
+
+/* --- Segmented controls (Count / Revenue / Profit, Delivery / Pickup) --- */
+.pill-group.seg {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: #ebecf0;
+  box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+.pill-group.seg .pill {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 8px;
+  padding: 5px 14px;
+  color: #3a3a3c;
+  font-weight: 500;
+}
+.pill-group.seg .pill:hover {
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink);
+}
+.pill-group.seg .pill.active,
+.pill-group.seg .pill.active:hover {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.1), 0 2px 6px rgba(16, 24, 40, 0.08);
+}
+
+/* --- Phone: sidebar becomes a frosted bar across the top --- */
+@media (max-width: 800px) {
+  .sidebar {
+    position: relative;
+    top: 0;
+    z-index: 40;
+    margin: 8px;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    border-radius: 18px;
+    padding: 8px;
+    border-bottom: 1px solid var(--glass-edge);
+  }
+  .layout {
+    align-items: stretch;
+  }
+  .sidebar .brand {
+    padding: 2px 8px 8px;
+  }
+  .sidebar .brand-logo {
+    height: 28px;
+  }
+  .sidebar a {
+    padding: 8px 12px;
+  }
+  .content {
+    padding: 18px 16px 48px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  button:active:not(:disabled),
+  .hub-card:hover,
+  button.primary:hover:not(:disabled) {
+    transform: none !important;
+  }
 }

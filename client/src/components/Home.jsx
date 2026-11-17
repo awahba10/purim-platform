@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { NAV } from '../nav';
+import Icon from './Icon';
 
 export default function Home() {
   const links = NAV.filter((t) => t.path !== '/home');
@@ -13,7 +14,7 @@ export default function Home() {
       <div className="hub-grid">
         {links.map((t) => (
           <NavLink key={t.path} to={t.path} className="hub-card">
-            <span className="hub-ico">{t.icon}</span>
+            <span className="hub-ico"><Icon name={t.icon} size={22} /></span>
             <span className="hub-label">{t.label}</span>
           </NavLink>
         ))}

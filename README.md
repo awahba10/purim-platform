@@ -39,7 +39,12 @@ Ten tabs down the left side (the sidebar is always visible):
 ### Colours
 
 The site is black and white with greys as accents, defined once as variables
-at the top of `client/src/index.css`. Inventory categories (Trays, Filler,
+at the top of `client/src/index.css`. An Apple-style "glass" layer at the end of
+that file adds the soft background wash, floating white boxes, the frosted
+sidebar / pop-ups / windows, segmented controls and hover motion (delete that
+block to drop the look). Icons are thin line SVGs in
+`client/src/components/Icon.jsx`; the MW logo is `client/src/assets/mw-logo.png`
+and the browser-tab icon is `client/public/favicon.png`. Inventory categories (Trays, Filler,
 Wine, Grocery) each have a soft muted tint so they are easy to tell apart.
 Status colours keep their meaning and were not changed: green = done (Made,
 Delivered, Paid), amber = not yet / warning, blue = partway (Some Made,

@@ -9,6 +9,7 @@ import {
 import FilterPanel from './FilterPanel';
 import { useSeason, seasonSlug } from '../season';
 import BarGraph from './BarGraph';
+import Icon from './Icon';
 import {
   computeExtraStats,
   groupByPrice,
@@ -262,7 +263,7 @@ function FinancialsLock({ onUnlock }) {
     <div className="panel">
       <h1>Financials</h1>
       <form className="fin-lock" onSubmit={submit}>
-        <div className="fin-lock-ico">🔒</div>
+        <div className="fin-lock-ico"><Icon name="lock" size={30} /></div>
         <p>This tab is password protected.</p>
         <input
           type="password"
@@ -778,7 +779,7 @@ function FinancialsInner({ onLock }) {
         <h1>Financials</h1>
         <div className="ph-actions">
           <button onClick={onLock} title="Lock this tab again">
-            🔒 Lock
+            <Icon name="lock" size={16} /> Lock
           </button>
           <button onClick={load}>Refresh</button>
           <button disabled={exporting} onClick={() => runExport(exportReportCsv)}>
