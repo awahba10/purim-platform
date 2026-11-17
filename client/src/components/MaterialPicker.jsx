@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { money, CATEGORIES, categoryOf } from '../util';
+import Icon, { CAT_ICON } from './Icon';
 
 // Material selector for REGULAR materials. Every non-tray material shows as a
 // tappable chip; the search box only filters which chips are shown. `value` is
@@ -57,7 +58,7 @@ export default function MaterialPicker({ catalog, value, onChange }) {
           if (!group.length) return null;
           return [
             <span key={'h-' + c.key} className={'mp-group cat-' + c.key}>
-              {c.label}
+              <Icon name={CAT_ICON[c.key]} size={14} /> {c.label}
             </span>,
             ...group.map((m) => {
               const unlimited = c.key === 'grocery';

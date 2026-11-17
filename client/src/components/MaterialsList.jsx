@@ -1,4 +1,5 @@
 import { splitTrays, matText } from '../util';
+import Icon from './Icon';
 
 // A product's (or preset's) materials with the tray on its own "Tray" line
 // above the regular materials. Pass `catalog` for unsaved drafts (names and
@@ -15,7 +16,9 @@ export default function MaterialsList({ materials, catalog, limit, open, onToggl
     <span className="mat-list">
       {trays.length > 0 && (
         <span className="mat-line">
-          <span className="tray-tag">Tray</span> {matText(trays, nameOf)}
+          <span className="tray-tag">
+            <Icon name="tray" size={13} /> Tray
+          </span> {matText(trays, nameOf)}
         </span>
       )}
       <span className="mat-line">

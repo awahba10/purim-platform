@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { money, CATEGORIES, categoryOf, EXPENSE_KINDS, todayISO } from '../util';
 import { useSeason } from '../season';
+import Icon, { CAT_ICON } from './Icon';
 
 // The Inventory tab. Four kinds of stock, each with its own rules, plus a log
 // of other spending (expenses). Every section collapses.
@@ -63,7 +64,7 @@ function CategoryChips({ value, onChange }) {
           className={'cat-chip cat-' + c.key + (value === c.key ? ' on' : '')}
           onClick={() => onChange(c.key)}
         >
-          {c.one}
+          <Icon name={CAT_ICON[c.key]} size={15} /> {c.one}
         </button>
       ))}
     </span>
@@ -89,7 +90,9 @@ export function Section({ cat, items, open, onToggle, children, summary }) {
     <section className={'inv-section inv-' + cat}>
       <button type="button" className="inv-head" onClick={onToggle} aria-expanded={open}>
         <span className="fp-caret">{open ? '▾' : '▸'}</span>
-        <span className={'cat-chip cat-' + cat + ' on static'}>{info.title}</span>
+        <span className={'cat-chip cat-' + cat + ' on static'}>
+          <Icon name={CAT_ICON[cat]} size={16} /> {info.title}
+        </span>
         <span className="subtle">
           {items.length} item{items.length === 1 ? '' : 's'}
         </span>
@@ -436,7 +439,9 @@ function Expenses({ open, onToggle }) {
     <section className="inv-section inv-expenses">
       <button type="button" className="inv-head" onClick={onToggle} aria-expanded={open}>
         <span className="fp-caret">{open ? '▾' : '▸'}</span>
-        <span className="cat-chip cat-expense on static">Expenses</span>
+        <span className="cat-chip cat-expense on static">
+          <Icon name="receipt" size={16} /> Expenses
+        </span>
         <span className="subtle">
           {list.length} bill{list.length === 1 ? '' : 's'}
         </span>

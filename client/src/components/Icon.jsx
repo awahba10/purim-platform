@@ -97,12 +97,53 @@ const PATHS = {
       <path d="m14.5 6 3 3" />
     </>
   ),
+  // Inventory categories
+  tray: (
+    <>
+      <path d="M3 13.5h18l-1.6 4.3a1.5 1.5 0 0 1-1.4 1H6a1.5 1.5 0 0 1-1.4-1z" />
+      <path d="M5.5 13.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" />
+      <path d="M12 7V5.2M10.5 5h3" />
+    </>
+  ),
+  flower: (
+    <>
+      <path d="M12 13.5c-3 0-5-2.2-5-5.5V4.5l2.5 2 2.5-3 2.5 3 2.5-2V8c0 3.3-2 5.5-5 5.5z" />
+      <path d="M12 13.5v7M12 18.5c-1.4-1.9-3.2-2.6-5-2.6.2 2 2.2 3.1 5 2.6z" />
+    </>
+  ),
+  wine: (
+    <>
+      <path d="M7.5 3.5h9l-.3 4.2A4.2 4.2 0 0 1 12 11.6a4.2 4.2 0 0 1-4.2-3.9z" />
+      <path d="M7.7 6.5h8.6M12 11.6v8.9M8.5 20.5h7" />
+    </>
+  ),
+  basket: (
+    <>
+      <path d="M3.5 9.5h17l-1.7 9.2a1.5 1.5 0 0 1-1.5 1.3H6.7a1.5 1.5 0 0 1-1.5-1.3z" />
+      <path d="m8 9.5 3-6M16 9.5l-3-6M9.5 13v3.5M14.5 13v3.5" />
+    </>
+  ),
+  receipt: (
+    <>
+      <path d="M5.5 3.5h13v17l-2.2-1.4-2.1 1.4-2.2-1.4-2.2 1.4-2.1-1.4-2.2 1.4z" />
+      <path d="M9 8h6M9 11.5h6M9 15h4" />
+    </>
+  ),
   sparkles: (
     <>
       <path d="m11 3.5 1.7 4.8 4.8 1.7-4.8 1.7L11 16.5l-1.7-4.8L4.5 10l4.8-1.7z" />
       <path d="m18.5 14.5.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
     </>
   ),
+};
+
+// Which icon marks each inventory category.
+export const CAT_ICON = {
+  tray: 'tray',
+  filler: 'flower',
+  wine: 'wine',
+  grocery: 'basket',
+  expense: 'receipt',
 };
 
 export default function Icon({ name, size = 18, className = '', title }) {

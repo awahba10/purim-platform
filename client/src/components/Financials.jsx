@@ -146,10 +146,16 @@ function SellThrough({ rows, total, filtered }) {
   );
 }
 
+// tone 'ok' / 'warn' adds a small Paid / Not paid status pill (the number
+// itself stays black, so Breakeven is the only coloured number on the tab).
+const TONE_PILL = { ok: 'Paid', warn: 'Not paid' };
 function Card({ label, value, tone }) {
   return (
     <div className={'card' + (tone ? ' ' + tone : '')}>
-      <div className="card-label">{label}</div>
+      <div className="card-label">
+        {label}
+        {TONE_PILL[tone] && <span className={'badge ' + tone}>{TONE_PILL[tone]}</span>}
+      </div>
       <div className="card-value">{value}</div>
     </div>
   );

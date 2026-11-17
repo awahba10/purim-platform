@@ -17,21 +17,20 @@
   --brand-soft: #eceef2; /* light grey: selected / active fills */
   --brand-soft-strong: #e1e4ea;
   --accent: #8a8a8a; /* mid grey: secondary accent */
-  --tray: #3d4470; /* "Tray" / "Limiting" tags (same as the tray category) */
-  --tray-bg: #e6e8f3;
-  --tray-row: #f8f9fc;
-  /* Inventory category tints (identity only, not status): one soft, muted
-     family so they sit quietly on black and white. */
-  --cat-tray: #3d4470; /* dusty indigo */
-  --cat-tray-bg: #e6e8f3;
-  --cat-filler: #2c6464; /* muted teal */
-  --cat-filler-bg: #dff0ee;
-  --cat-wine: #74365a; /* plum */
-  --cat-wine-bg: #f3e3ec;
-  --cat-grocery: #5f5a2e; /* olive */
-  --cat-grocery-bg: #eeecdc;
-  --cat-expense: #333333; /* charcoal */
-  --cat-expense-bg: #e8e8e8;
+  --tray: #1d1d1f; /* "Tray" / "Limiting" tags: neutral, marked by an icon */
+  --tray-bg: #f0f1f4;
+  --tray-row: transparent;
+  /* Inventory categories are told apart by icons, not colours. */
+  --cat-tray: var(--ink);
+  --cat-tray-bg: var(--panel);
+  --cat-filler: var(--ink);
+  --cat-filler-bg: var(--panel);
+  --cat-wine: var(--ink);
+  --cat-wine-bg: var(--panel);
+  --cat-grocery: var(--ink);
+  --cat-grocery-bg: var(--panel);
+  --cat-expense: var(--ink);
+  --cat-expense-bg: var(--panel);
   --shadow: 0, 0, 0; /* rgb for shadows/overlays */
 
   /* Glass + depth (see "Glass theme" at the end of this file) */
@@ -2788,6 +2787,145 @@ table.grid tbody tr:hover {
   color: var(--ink);
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.1), 0 2px 6px rgba(16, 24, 40, 0.08);
+}
+
+/* --- Bars that open/close things are not buttons visually: no lift,
+   shadow, press or hover fill; only the caret darkens. --- */
+.pf-toggle,
+.fp-bar,
+.be-toggle,
+.inv-head,
+.linkbtn,
+.link-danger {
+  box-shadow: none !important;
+  transform: none !important;
+}
+.pf-toggle,
+.pf-toggle:hover,
+.be-toggle,
+.be-toggle:hover,
+.fp-bar,
+.fp-bar:hover,
+.inv-head,
+.inv-head:hover {
+  background: transparent;
+  border-color: transparent;
+}
+.pf-toggle:hover .fp-caret,
+.fp-bar:hover .fp-caret,
+.be-toggle:hover,
+.inv-head:hover .fp-caret {
+  color: var(--ink);
+}
+.filter-panel .fp-bar {
+  padding: 11px 16px;
+}
+.inv-head {
+  padding: 14px 18px;
+}
+
+/* --- New Order product: one white card per product; the three sections
+   inside are parts of it, split by hairlines (no nested boxes, no grey). --- */
+.product-fields {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--float);
+  padding: 16px 20px 20px;
+  gap: 0;
+}
+.product-fields > .pf-head {
+  padding-bottom: 4px;
+}
+.product-fields .pf-section {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 16px 0 4px;
+  margin-top: 12px;
+}
+.product-fields .pf-section-title {
+  border-bottom: none;
+  padding-bottom: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+}
+.product-fields > .stock-warn,
+.product-fields > .error {
+  margin-top: 12px;
+}
+/* Inside pop-up windows the product form is already on white: no card. */
+.modal .product-fields {
+  box-shadow: none;
+  border: none;
+  padding: 0;
+}
+
+/* --- Financials: Paid / Not paid as small pills; numbers stay black. --- */
+.card.ok .card-value,
+.card.warn .card-value {
+  color: var(--ink);
+}
+.card-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-label .badge {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+/* --- Inventory categories: icon + text, black and white --- */
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cat-chip.on:not(.static) {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.cat-chip.static,
+.cat-chip.static.on {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+  padding-left: 0;
+}
+.mp-group,
+.mp-group.cat-filler,
+.mp-group.cat-wine,
+.mp-group.cat-grocery {
+  color: var(--muted);
+  gap: 5px;
+}
+.chip-inf {
+  color: var(--ink);
+}
+.tray-tag,
+.ps-tray {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* A table inside another white box (Inventory sections, windows) doesn't
+   float again: just a hairline edge. */
+.inv-section .table-wrap,
+.modal .table-wrap,
+.breakeven .table-wrap,
+.inv-add .table-wrap {
+  box-shadow: none;
+  border: 1px solid var(--line);
+  border-radius: 14px;
 }
 
 /* --- Phone: sidebar becomes a frosted bar across the top --- */

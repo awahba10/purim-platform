@@ -45,7 +45,7 @@ sidebar / pop-ups / windows, segmented controls and hover motion (delete that
 block to drop the look). Icons are thin line SVGs in
 `client/src/components/Icon.jsx`; the MW logo is `client/src/assets/mw-logo.png`
 and the browser-tab icon is `client/public/favicon.png`. Inventory categories (Trays, Filler,
-Wine, Grocery) each have a soft muted tint so they are easy to tell apart.
+Wine, Grocery) are told apart by icons, not colours.
 Status colours keep their meaning and were not changed: green = done (Made,
 Delivered, Paid), amber = not yet / warning, blue = partway (Some Made,
 Partially Paid), red = error or destructive action.

@@ -18,6 +18,7 @@ import ProductFields from './ProductFields';
 import PaymentMethodPicker from './PaymentMethodPicker';
 import MaterialsList from './MaterialsList';
 import { useSeason } from '../season';
+import Icon from './Icon';
 
 export default function NewOrder() {
   const navigate = useNavigate();
@@ -99,7 +100,7 @@ export default function NewOrder() {
         <span className="ps-name">{p.name.trim() || 'Untitled'}</span>
         {tray && (
           <span className="ps-tray">
-            {tray.name} ×{trays[0].quantity_used}
+            <Icon name="tray" size={13} /> {tray.name} ×{trays[0].quantity_used}
           </span>
         )}
         {brand && <span className="ps-brand">{brand.name}</span>}
