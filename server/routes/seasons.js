@@ -8,6 +8,7 @@ const toRow = (s) => ({
   order_count: Number(s.order_count || 0),
   product_count: Number(s.product_count || 0),
   batch_count: Number(s.batch_count || 0),
+  expense_count: Number(s.expense_count || 0),
 });
 
 async function listSeasons(db) {
@@ -16,7 +17,8 @@ async function listSeasons(db) {
             (SELECT COUNT(*) FROM orders o WHERE o.season_id = s.id) AS order_count,
             (SELECT COUNT(*) FROM products p JOIN orders o ON o.id = p.order_id
               WHERE o.season_id = s.id) AS product_count,
-            (SELECT COUNT(*) FROM batches b WHERE b.season_id = s.id) AS batch_count
+            (SELECT COUNT(*) FROM batches b WHERE b.season_id = s.id) AS batch_count,
+            (SELECT COUNT(*) FROM expenses e WHERE e.season_id = s.id) AS expense_count
        FROM seasons s
       ORDER BY s.created_at DESC, s.id DESC`
   );
@@ -70,7 +72,8 @@ router.post('/', async (req, res, next) => {
     const sid = rows[0].id;
     await client.query(
       `INSERT INTO material_stock (season_id, material_id, quantity, starting_quantity)
-       SELECT $1, id, 0, CASE WHEN is_limiting THEN 0 END FROM materials
+       SELECT $1, id, 0, CASE WHEN category IN ('tray', 'filler', 'wine') THEN 0 END
+         FROM materials
        ON CONFLICT DO NOTHING`,
       [sid]
     );
@@ -123,7 +126,8 @@ router.delete('/:id', async (req, res, next) => {
     const { rows } = await client.query(
       `SELECT s.status,
               (SELECT COUNT(*)::int FROM orders o WHERE o.season_id = s.id) AS orders,
-              (SELECT COUNT(*)::int FROM batches b WHERE b.season_id = s.id) AS batches
+              (SELECT COUNT(*)::int FROM batches b WHERE b.season_id = s.id) AS batches,
+              (SELECT COUNT(*)::int FROM expenses e WHERE e.season_id = s.id) AS expenses
          FROM seasons s WHERE s.id = $1`,
       [req.params.id]
     );
@@ -138,10 +142,10 @@ router.delete('/:id', async (req, res, next) => {
         .status(400)
         .json({ error: "The active season can't be deleted. Reopen another season first." });
     }
-    if (s.orders > 0 || s.batches > 0) {
+    if (s.orders > 0 || s.batches > 0 || s.expenses > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({
-        error: `This season has ${s.orders} order(s) and ${s.batches} batch(es), so it can't be deleted. Only empty seasons can be.`,
+        error: `This season has ${s.orders} order(s), ${s.batches} batch(es) and ${s.expenses} expense(s), so it can't be deleted. Only empty seasons can be.`,
       });
     }
     await client.query('DELETE FROM seasons WHERE id = $1', [req.params.id]);

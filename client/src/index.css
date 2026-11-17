@@ -21,6 +21,17 @@
   --tray: #5e4334; /* "Tray" / "Limiting" tags */
   --tray-bg: #eadccb;
   --tray-row: #faf4ec;
+  /* Inventory category tints (identity only, not status) */
+  --cat-tray: #5e4334;
+  --cat-tray-bg: #eadccb;
+  --cat-filler: #7a5a2c;
+  --cat-filler-bg: #f3e7d3;
+  --cat-wine: #6e3b3f;
+  --cat-wine-bg: #ecdcdc;
+  --cat-grocery: #4f5a3c;
+  --cat-grocery-bg: #e3e6d8;
+  --cat-expense: #4a342a;
+  --cat-expense-bg: #e4ddd5;
   --shadow: 74, 52, 42; /* rgb of Espresso for shadows/overlays */
 
   /* Status colours — these "tell you something" and stay as they were:
@@ -1899,4 +1910,353 @@ td.right button {
 .badge.tag {
   background: var(--tray-bg);
   color: var(--tray);
+}
+
+/* --- Inventory categories --- */
+.cat-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cat-chip {
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+  background: var(--neutral);
+  color: var(--muted);
+}
+.cat-chip.static {
+  cursor: default;
+}
+.cat-chip.cat-tray.on { background: var(--cat-tray-bg); color: var(--cat-tray); border-color: var(--cat-tray); }
+.cat-chip.cat-filler.on { background: var(--cat-filler-bg); color: var(--cat-filler); border-color: var(--cat-filler); }
+.cat-chip.cat-wine.on { background: var(--cat-wine-bg); color: var(--cat-wine); border-color: var(--cat-wine); }
+.cat-chip.cat-grocery.on { background: var(--cat-grocery-bg); color: var(--cat-grocery); border-color: var(--cat-grocery); }
+.cat-chip.cat-expense.on { background: var(--cat-expense-bg); color: var(--cat-expense); border-color: var(--cat-expense); }
+.cat-chip.static { border-color: transparent; }
+.inv-add {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.inv-section {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.inv-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: var(--surface-2);
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+}
+.inv-head:hover {
+  background: var(--hover);
+}
+.inv-head .cat-chip {
+  font-size: 13px;
+  padding: 4px 12px;
+}
+.inv-sum {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.inv-body {
+  padding: 4px 14px 14px;
+}
+.inv-body .table-wrap {
+  margin-top: 6px;
+}
+.grid td.inf {
+  font-size: 18px;
+  color: var(--cat-grocery);
+}
+.inv-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.inv-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.inv-edit input {
+  width: 120px;
+}
+.inv-edit label:first-child input {
+  width: 220px;
+}
+.exp-kind {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--cat-expense-bg);
+  color: var(--cat-expense);
+}
+.exp-add .exp-note {
+  flex: 1;
+  min-width: 160px;
+  max-width: none !important;
+}
+.grid td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Materials picker: group labels, unlimited and out tags */
+.mp-group {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mp-group.cat-filler { color: var(--cat-filler); }
+.mp-group.cat-wine { color: var(--cat-wine); }
+.mp-group.cat-grocery { color: var(--cat-grocery); }
+.chip-inf {
+  color: var(--cat-grocery);
+  font-weight: 700;
+}
+.chip-outtag {
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.chip.chip-out {
+  border-style: dashed;
+}
+
+/* --- New Order: collapsible product cards --- */
+.products-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 253, 250, 0.96);
+  box-shadow: 0 4px 12px rgba(var(--shadow), 0.08);
+  font-weight: 600;
+}
+.pf-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  text-align: left;
+}
+.pf-toggle:hover {
+  background: none;
+}
+.pf-head.collapsed {
+  gap: 10px;
+}
+.product-fields:has(.pf-head.collapsed) {
+  padding: 10px 14px;
+}
+.pf-summary {
+  display: contents;
+}
+.pf-summary > span {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.ps-name {
+  font-weight: 700;
+}
+.ps-tray {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--tray-bg);
+  color: var(--tray);
+  font-weight: 600;
+  font-size: 12px !important;
+}
+.ps-brand {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 12px !important;
+}
+.ps-ful,
+.ps-for {
+  color: var(--muted);
+}
+.ps-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pf-problem {
+  color: var(--danger);
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .ps-for {
+    display: none;
+  }
+}
+
+/* Brand badge on product cards */
+.badge.brand {
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+}
+
+/* --- Locations & Brands --- */
+.lb-section {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.panel h2 {
+  font-size: 18px;
+  margin: 18px 0 4px;
+}
+
+/* --- Financials password --- */
+.fin-lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 320px;
+  margin: 40px auto;
+  padding: 26px 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  text-align: center;
+}
+.fin-lock-ico {
+  font-size: 30px;
+}
+.fin-lock p {
+  margin: 0;
+}
+.fin-lock input {
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 0.3em;
+}
+
+/* --- Financials breakeven --- */
+.breakeven {
+  margin: 12px 0 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--panel);
+}
+.breakeven.be-down {
+  border-color: #f0c8c8;
+}
+.breakeven.be-up {
+  border-color: var(--ok-bg);
+}
+.be-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+.be-value {
+  font-size: 34px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.breakeven.be-down .be-value {
+  color: var(--danger);
+}
+.breakeven.be-up .be-value {
+  color: var(--ok);
+}
+.be-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  flex: 1;
+  max-width: 360px;
+}
+.be-progress .bg-track {
+  display: block;
+  height: 14px;
+}
+.be-toggle {
+  margin-top: 12px;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-weight: 600;
+  color: var(--brand);
+}
+.be-toggle:hover {
+  background: none;
+}
+.be-table {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.be-table td {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.be-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  padding-left: 12px;
+}
+.be-neg {
+  color: var(--danger);
+}
+.be-pos {
+  color: var(--ok);
+}
+.be-total td {
+  border-bottom: none;
+  font-weight: 800;
+  font-size: 15px;
 }

@@ -13,9 +13,28 @@ Ten tabs down the left side (the sidebar is always visible):
 | **Production** | Grouped by product name, same shape as Delivery Batches. The overview lists every product name with tallies aggregated across every order: Total, then Made, Delivered, Gift Label printed and Shipping Label printed, each as a fraction of the total (e.g. 13 / 17). Click a row to open that product's detail — one card per ticket showing ticket number, customer (and recipient), the maker **Notes** ("No notes" if none), and the materials used, each with a **Mark made / Mark not made** toggle. Long materials lists collapse to the first three with a **show all** link. No filters — it's already grouped. |
 | **Inventory** | List of supplies with a stock count and a per-unit **cost**. Add / edit any row. Bulk-bought items that cap sales (trays) can be flagged **Limiting stock** (shown with a "Limiting" tag) and given a **Starting quantity** — how many were bought; current stock still drops automatically as products are ordered. The list is split into **Limiting Stock (Trays)** (tinted, at the top) and **Other Materials**; toggling the flag moves a row. Zero or negative stock shows in red with a chip ("Need to buy" / "Sold out"). Regular materials never block an order and may go negative; **trays can never go below zero** anywhere (orders, product edits, manual edits). |
 | **Premade Products** | Reusable product presets (name, materials + quantities, auto-summed cost, price). Each can have an **Anchor tray** (chip popup listing only limiting-stock materials; picking one adds it to the materials at qty 1). The **Inventory** column is derived from the anchor tray's remaining stock — presets sharing a tray show the same number; no anchor shows "—". In the **Select Preset** menu each preset shows "N left"; sold-out presets are greyed out and can't be picked. If an order (or an edited product) needs more trays than remain, an inline error says how many are left and saving is blocked until it's reduced; the server enforces the same rule. |
-| **Delivery Cost** | Reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
+| **Locations & Brands** | (was Delivery Cost) Brands you can tag products with — see below — plus the reference list of delivery locations, each with a name and a cost figure. Purely informational — the cost is never applied automatically; only the names feed the New Order location picker. Add / edit any row. |
 | **Delivery Batches** | Group products into a delivery run. The overview lists every batch (each row has a **Share** button). Inside a batch, each product is a one-line card (the whole card scrolls sideways as one unit on a phone): ▲ ▼ move / drag, position number, Delivered toggle, **address (bold — tap it to copy)**, product name, ticket, delivery instructions ("No instructions" if none), then a batch chip (reassign) and an ✕ to drop it from the batch. Reorder by dragging (long-press first on a touchscreen) with a live drop-position line, by ▲ ▼, or both. Materials aren't shown here. **Open Route in Maps** builds one Google Maps multi-stop directions link with every address in the current order; **Share** sends the batch's link (native share sheet on mobile, copy-to-clipboard on desktop). |
 | **Financials** | Computed live from every product. A collapsible **Filters** panel (Product Name, Pickup/Delivery, Location) applies to the whole tab. Summary cards: total orders, total products sold, **total delivery income**, average order value, profit margin %, average products per order, revenue (paid / not paid / total), profit (paid / not paid / total). Below: **By Product** and **By Location** breakdown tables; bar graphs **Orders by Product Name** and **Orders by Location** (Count / Revenue / Profit toggle), **Orders by Price Point** ($10 ranges, built from the data; a boundary price goes in the higher range), **Revenue by Payment Method** ("Not set" when blank), **Orders by Day**; **Sell-through** — a **Total Sell-through** summary across all trays, then one row per limiting tray (sold / starting, %, remaining, products sold on it — sold = starting − current stock, so it's overall, not filtered); **Top Customers** (2+ orders, matched by name + phone). **Export CSV** / **Export PDF** (top right) reflect the active filters; the PDF lists the filters and includes cards, tables and charts. Nothing to type here. |
+
+### Inventory categories, brands, breakeven
+
+- **Inventory** has four categories (chosen with chips when adding/editing):
+  **Tray** (bought once, caps sales, never below zero), **Filler** (bought once,
+  running out only warns), **Wine** (pay only for what sells — tracked, not
+  overhead; "Owed" = sold × cost), **Grocery** (unlimited, est. cost each only).
+  Each is a collapsible section with its own columns. An **Expenses** section
+  logs other spending (grocery runs, packaging, …) per season.
+- **Brands** (Locations & Brands tab, shared by all seasons): one per product,
+  set on New Order / product edit; presets can carry a default. Items has a
+  Brand column + filter; Financials has a Brand filter, By Brand table and chart.
+- **Financials** is behind a password (asked once per browser session; Lock
+  button). **Breakeven** = paid revenue (products + delivery) − wine sold −
+  (trays bought + filler bought + expenses), for the whole season, with a
+  collapsible breakdown.
+- **New Order** product cards collapse to a one-line summary (name, tray, brand,
+  pickup/delivery, recipient, price, ⚠ if something's wrong); a pinned bar has
+  Collapse all / Expand all.
 
 ### Colours
 

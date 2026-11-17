@@ -10,6 +10,7 @@ import {
   filterItems,
   distinctSorted,
   trayErrors,
+  softStockWarnings,
   catalogWithReturned,
 } from '../util';
 import ProductFields from './ProductFields';
@@ -25,6 +26,7 @@ const COLUMNS = [
   { key: 'ticket_number', label: 'Ticket' },
   { key: 'customer_name', label: 'Customer' },
   { key: 'name', label: 'Product' },
+  { key: 'brand_name', label: 'Brand' },
   { key: 'is_made', label: 'Made' },
   { key: 'fulfillment', label: 'Type' },
   { key: 'delivery_location', label: 'Location' },
@@ -51,6 +53,7 @@ const CSV_COLUMNS = [
   { key: 'delivery_instructions', label: 'Delivery instructions' },
   { label: 'Delivery charge', get: (p) => Number(p.delivery_charge || 0).toFixed(2) },
   { key: 'recipient_name', label: 'Recipient' },
+  { label: 'Brand', get: (p) => p.brand_name || '' },
   { label: 'Cost', get: (p) => p.cost.toFixed(2) },
   { label: 'Price', get: (p) => p.price.toFixed(2) },
   { label: 'Profit', get: (p) => p.profit.toFixed(2) },
@@ -84,6 +87,7 @@ export default function Products() {
   const [deliveryLocations, setDeliveryLocations] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' });
@@ -104,13 +108,15 @@ export default function Products() {
       api.get('/delivery-locations'),
       api.get('/label-templates'),
       api.get('/batches'),
+      api.get('/brands'),
     ])
-      .then(([p, m, d, t, b]) => {
+      .then(([p, m, d, t, b, br]) => {
         setProducts(p);
         setMaterials(m);
         setDeliveryLocations(d);
         setTemplates(t);
         setBatches(b);
+        setBrands(br);
       })
       .catch((e) => setError(e.message));
 
@@ -175,8 +181,17 @@ export default function Products() {
         match: (p, v) =>
           v.includes(p.batch_id == null ? 'unassigned' : String(p.batch_id)),
       },
+      {
+        key: 'brand',
+        label: 'Brand',
+        options: [
+          { value: 'none', label: 'No brand' },
+          ...brands.map((b) => ({ value: String(b.id), label: b.name })),
+        ],
+        match: (p, v) => v.includes(p.brand_id == null ? 'none' : String(p.brand_id)),
+      },
     ],
-    [products, deliveryLocations, batches]
+    [products, deliveryLocations, batches, brands]
   );
 
   const rows = useMemo(() => {
@@ -495,6 +510,7 @@ export default function Products() {
                 <td>{p.ticket_number}</td>
                 <td>{p.customer_name}</td>
                 <td>{p.name}</td>
+                <td>{p.brand_name || <span className="subtle">—</span>}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <button
                     className={'made-toggle ' + (p.is_made ? 'on' : 'off')}
@@ -591,6 +607,8 @@ export default function Products() {
             <ProductFields
               value={editing.draft}
               catalog={editCatalog}
+              brands={brands}
+              stockWarnings={softStockWarnings([editing.draft], editCatalog)[editing.draft._key]}
               deliveryLocations={deliveryLocations}
               onChange={(next) => setEditing((cur) => ({ ...cur, draft: next }))}
               stockErrors={editStockErrors}

@@ -28,6 +28,16 @@ ALTER TABLE materials ADD COLUMN IF NOT EXISTS cost NUMERIC(10, 2) NOT NULL DEFA
 -- be sold. starting_quantity = how many were bought before selling began.
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS is_limiting BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE materials ADD COLUMN IF NOT EXISTS starting_quantity INTEGER;
+-- Inventory category (shared by all seasons):
+--   'tray'    bought once before the season; caps sales, never below zero
+--   'filler'  bought once; can run out (warn only, the maker swaps items)
+--   'wine'    pay only for what sells; tracked, but not overhead
+--   'grocery' small items bought on grocery runs; unlimited, cost is an
+--             estimate for the tray cost; spending is logged as expenses
+-- is_limiting stays in step with category = 'tray'.
+ALTER TABLE materials ADD COLUMN IF NOT EXISTS category TEXT;
+UPDATE materials SET category = CASE WHEN is_limiting THEN 'tray' ELSE 'filler' END
+ WHERE category IS NULL;
 
 CREATE TABLE IF NOT EXISTS orders (
   id                  SERIAL PRIMARY KEY,
@@ -118,6 +128,27 @@ CREATE TABLE IF NOT EXISTS product_materials (
 
 CREATE INDEX IF NOT EXISTS idx_products_order_id ON products(order_id);
 
+-- Brands a product can be tagged with (shared by all seasons). Presets can
+-- carry a default brand.
+CREATE TABLE IF NOT EXISTS brands (
+  id   SERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS brand_id INTEGER REFERENCES brands(id);
+
+-- Money spent outside of inventory counts (grocery runs, packaging, gas…).
+-- Belongs to a season and counts toward that season's breakeven.
+CREATE TABLE IF NOT EXISTS expenses (
+  id         SERIAL PRIMARY KEY,
+  season_id  INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+  spent_on   DATE NOT NULL DEFAULT CURRENT_DATE,
+  kind       TEXT NOT NULL DEFAULT 'Other',
+  note       TEXT,
+  amount     NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_expenses_season ON expenses(season_id);
+
 -- Stock counts per season. The materials list itself (name, cost, limiting
 -- flag) is shared by every season; only quantities are tracked per season.
 -- A missing row means 0 in stock. (materials.quantity / starting_quantity are
@@ -152,6 +183,8 @@ CREATE INDEX IF NOT EXISTS idx_preset_materials_preset ON preset_materials(prese
 -- the preset's derived inventory. Several presets may share one tray type.
 ALTER TABLE presets ADD COLUMN IF NOT EXISTS anchor_material_id INTEGER
   REFERENCES materials(id) ON DELETE SET NULL;
+ALTER TABLE presets ADD COLUMN IF NOT EXISTS brand_id INTEGER
+  REFERENCES brands(id) ON DELETE SET NULL;
 
 -- Delivery locations: a reference list only. The cost figure is never applied
 -- automatically anywhere; only the names feed the New Order location selector.

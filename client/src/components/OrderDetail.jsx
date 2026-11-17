@@ -9,6 +9,7 @@ import {
   methodToForm,
   formToMethod,
   trayErrors,
+  softStockWarnings,
   catalogWithReturned,
 } from '../util';
 import ProductFields from './ProductFields';
@@ -123,6 +124,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
   const [materials, setMaterials] = useState([]);
   const [presets, setPresets] = useState([]);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingOrder, setEditingOrder] = useState(false);
@@ -148,6 +150,7 @@ export default function OrderDetail({ id, onClose, onChanged }) {
   useEffect(() => {
     load();
     api.get('/delivery-locations').then(setDeliveryLocations).catch(() => {});
+    api.get('/brands').then(setBrands).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -388,6 +391,9 @@ export default function OrderDetail({ id, onClose, onChanged }) {
                     {p.batch_name && (
                       <span className="badge tag"> {p.batch_name}</span>
                     )}
+                    {p.brand_name && (
+                      <span className="badge brand"> {p.brand_name}</span>
+                    )}
                   </strong>
                   <span>{money(p.price)}</span>
                 </div>
@@ -502,6 +508,8 @@ export default function OrderDetail({ id, onClose, onChanged }) {
               value={productModal.draft}
               catalog={modalCatalog}
               presets={presets}
+              brands={brands}
+              stockWarnings={softStockWarnings([productModal.draft], modalCatalog)[productModal.draft._key]}
               deliveryLocations={deliveryLocations}
               onChange={(next) => setProductModal((pm) => ({ ...pm, draft: next }))}
               stockErrors={modalStockErrors}

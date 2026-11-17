@@ -1,6 +1,11 @@
 const router = require('express').Router();
 const { pool } = require('../db');
-const { mapMaterials, cleanMaterials, attachMaterials } = require('../lib/products');
+const {
+  mapMaterials,
+  cleanMaterials,
+  attachMaterials,
+  cleanBrand,
+} = require('../lib/products');
 const { assertWritable } = require('../lib/seasons');
 
 const LINK = { linkTable: 'preset_materials', fk: 'preset_id' };
@@ -9,13 +14,14 @@ const LINK = { linkTable: 'preset_materials', fk: 'preset_id' };
 // ($1). Only counts while the anchor is still flagged as limiting stock;
 // otherwise the preset has no anchor. Presets themselves are shared.
 const SELECT_PRESET = `
-  SELECT ps.*,
+  SELECT ps.*, br.name AS brand_name,
          CASE WHEN am.is_limiting THEN ps.anchor_material_id END AS anchor_id,
          CASE WHEN am.is_limiting THEN am.name END AS anchor_name,
          CASE WHEN am.is_limiting THEN COALESCE(st.quantity, 0) END AS anchor_quantity
     FROM presets ps
     LEFT JOIN materials am ON am.id = ps.anchor_material_id
     LEFT JOIN material_stock st ON st.material_id = am.id AND st.season_id = $1
+    LEFT JOIN brands br ON br.id = ps.brand_id
 `;
 
 const toPreset = (p) => {
@@ -26,6 +32,8 @@ const toPreset = (p) => {
     price: Number(p.price),
     cost: materials.reduce((sum, m) => sum + m.line_cost, 0),
     anchor_material_id: anchored ? Number(p.anchor_id) : null,
+    brand_id: p.brand_id != null ? Number(p.brand_id) : null,
+    brand_name: p.brand_name || null,
     anchor_name: anchored ? p.anchor_name : null,
     inventory: anchored ? Number(p.anchor_quantity) : null,
     materials,
@@ -98,9 +106,11 @@ router.post('/', async (req, res, next) => {
     assertWritable(req, req.season);
     await client.query('BEGIN');
     const anchorId = (await cleanAnchor(client, req.body.anchor_material_id)) || null;
+    const brandId = await cleanBrand(client, req.body.brand_id);
     const { rows } = await client.query(
-      'INSERT INTO presets (name, price, anchor_material_id) VALUES ($1, $2, $3) RETURNING id',
-      [name.trim(), Number(price) || 0, anchorId]
+      `INSERT INTO presets (name, price, anchor_material_id, brand_id)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [name.trim(), Number(price) || 0, anchorId, brandId]
     );
     await replaceLinks(client, rows[0].id, withAnchor(materials, anchorId));
     await client.query('COMMIT');
@@ -135,6 +145,10 @@ router.patch('/:id', async (req, res, next) => {
     if (anchorId !== undefined) {
       sets.push(`anchor_material_id = $${i++}`);
       vals.push(anchorId);
+    }
+    if (req.body.brand_id !== undefined) {
+      sets.push(`brand_id = $${i++}`);
+      vals.push(await cleanBrand(client, req.body.brand_id));
     }
     if (name !== undefined && String(name).trim()) {
       sets.push(`name = $${i++}`);

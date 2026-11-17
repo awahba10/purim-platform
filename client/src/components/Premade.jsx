@@ -5,6 +5,7 @@ import MaterialPicker from './MaterialPicker';
 import AnchorChip from './AnchorChip';
 import InventoryBadge from './InventoryBadge';
 import MaterialsList from './MaterialsList';
+import PickChip from './PickChip';
 import { useSeason } from '../season';
 
 const COLUMNS = [
@@ -12,13 +13,14 @@ const COLUMNS = [
   { key: 'cost', label: 'Cost' },
   { key: 'price', label: 'Price' },
   { key: 'anchor_name', label: 'Anchor tray' },
+  { key: 'brand_name', label: 'Brand' },
   { key: 'inventory', label: 'Inventory' },
 ];
 
 const NUMERIC = new Set(['cost', 'price', 'inventory']);
 
 function emptyDraft() {
-  return { name: '', price: '', anchor_material_id: null, materials: [] };
+  return { name: '', price: '', anchor_material_id: null, brand_id: null, materials: [] };
 }
 
 function presetToDraft(p) {
@@ -26,6 +28,7 @@ function presetToDraft(p) {
     name: p.name || '',
     price: String(p.price ?? ''),
     anchor_material_id: p.anchor_material_id ?? null,
+    brand_id: p.brand_id ?? null,
     materials: (p.materials || []).map((m) => ({
       material_id: m.material_id,
       quantity_used: m.quantity_used,
@@ -37,6 +40,7 @@ export default function Premade() {
   const { current, readOnly } = useSeason();
   const [presets, setPresets] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState({ key: 'name', dir: 'asc' });
   const [editing, setEditing] = useState(null); // { preset?, draft }
@@ -44,10 +48,11 @@ export default function Premade() {
   const [busy, setBusy] = useState(false);
 
   const load = () =>
-    Promise.all([api.get('/presets'), api.get('/materials')])
-      .then(([p, m]) => {
+    Promise.all([api.get('/presets'), api.get('/materials'), api.get('/brands')])
+      .then(([p, m, b]) => {
         setPresets(p);
         setMaterials(m);
+        setBrands(b);
       })
       .catch((e) => setError(e.message));
 
@@ -95,6 +100,7 @@ export default function Premade() {
       name: d.name.trim(),
       price: Number(d.price) || 0,
       anchor_material_id: d.anchor_material_id,
+      brand_id: d.brand_id || null,
       materials: d.materials.map((m) => ({
         material_id: m.material_id,
         quantity_used: qtyOf(m.quantity_used),
@@ -198,6 +204,7 @@ export default function Premade() {
                 <td>{money(p.cost)}</td>
                 <td>{money(p.price)}</td>
                 <td>{p.anchor_name || <span className="subtle">—</span>}</td>
+                <td>{p.brand_name || <span className="subtle">—</span>}</td>
                 <td>
                   <InventoryBadge value={p.inventory} />
                 </td>
@@ -258,6 +265,21 @@ export default function Premade() {
                   placeholder="Classic tray"
                 />
               </label>
+
+              <div>
+                <div className="fld-label">Brand</div>
+                <PickChip
+                  value={editing.draft.brand_id ?? null}
+                  options={brands.map((b) => ({ id: b.id, label: b.name }))}
+                  onPick={(id) =>
+                    setEditing((c) => ({ ...c, draft: { ...c.draft, brand_id: id } }))
+                  }
+                  placeholder="No brand — choose one"
+                  noneLabel="No brand"
+                  emptyText="No brands yet — add them on the Locations & Brands tab."
+                />
+                <div className="hint">Filled in on the product when this preset is picked.</div>
+              </div>
 
               <div>
                 <div className="fld-label">Anchor tray</div>

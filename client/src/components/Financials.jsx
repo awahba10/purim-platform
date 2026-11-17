@@ -20,6 +20,7 @@ import {
   pctText,
   exportReportCsv,
   exportReportPdf,
+  computeBreakeven,
 } from '../financialsReport';
 
 const PRICE_METRIC = [{ key: 'lineItems', label: 'Products sold' }];
@@ -230,7 +231,179 @@ function BreakdownTable({ title, rows }) {
   );
 }
 
+// --- Password ---------------------------------------------------------------
+// Asked once; stays unlocked in this browser until the browser is closed
+// (a session cookie, shared by every tab), or until "Lock" is pressed.
+const FIN_PASSWORD = '1985';
+const FIN_COOKIE = 'mw_fin_unlocked';
+const finIsUnlocked = () =>
+  typeof document !== 'undefined' &&
+  document.cookie.split('; ').some((c) => c === FIN_COOKIE + '=1');
+const finSetUnlocked = (on) => {
+  document.cookie = on
+    ? `${FIN_COOKIE}=1; path=/; SameSite=Lax`
+    : `${FIN_COOKIE}=; path=/; SameSite=Lax; max-age=0`;
+};
+
+function FinancialsLock({ onUnlock }) {
+  const [pw, setPw] = useState('');
+  const [wrong, setWrong] = useState(false);
+  const submit = (e) => {
+    e.preventDefault();
+    if (pw === FIN_PASSWORD) {
+      finSetUnlocked(true);
+      onUnlock();
+    } else {
+      setWrong(true);
+      setPw('');
+    }
+  };
+  return (
+    <div className="panel">
+      <h1>Financials</h1>
+      <form className="fin-lock" onSubmit={submit}>
+        <div className="fin-lock-ico">🔒</div>
+        <p>This tab is password protected.</p>
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          placeholder="Password"
+          value={pw}
+          onChange={(e) => {
+            setPw(e.target.value);
+            setWrong(false);
+          }}
+          aria-label="Financials password"
+        />
+        <button className="primary">Unlock</button>
+        {wrong && <div className="error">That's not the right password.</div>}
+        <p className="hint">
+          Stays unlocked on this device until you close the browser or press Lock.
+        </p>
+      </form>
+    </div>
+  );
+}
+
+// Breakeven: overhead spent vs. paid revenue, with a collapsible breakdown.
+const BE_OPEN_KEY = 'mw.breakeven.open';
+export function Breakeven({ be }) {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(BE_OPEN_KEY) !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const toggle = () =>
+    setOpen((o) => {
+      try {
+        localStorage.setItem(BE_OPEN_KEY, o ? '0' : '1');
+      } catch {
+        /* storage unavailable */
+      }
+      return !o;
+    });
+  const pos = be.balance >= 0;
+  const pct = be.progress == null ? null : Math.min(1, be.progress);
+  const kinds = Object.entries(be.expenseKinds).sort((a, b) => b[1] - a[1]);
+  return (
+    <div className={'breakeven ' + (pos ? 'be-up' : 'be-down')}>
+      <div className="be-top">
+        <div>
+          <div className="card-label">Breakeven</div>
+          <div className="be-value">
+            {pos ? '+' : '−'}
+            {money(Math.abs(be.balance))}
+          </div>
+          <div className="subtle">
+            {pos
+              ? 'Everything spent is earned back.'
+              : `${money(Math.abs(be.balance))} to go until everything spent is earned back.`}
+          </div>
+        </div>
+        {pct != null && (
+          <div className="be-progress">
+            <span className="bg-track">
+              <span className="bg-fill" style={{ width: pct * 100 + '%' }} />
+            </span>
+            <span className="subtle">{Math.round(pct * 100)}% of the way back</span>
+          </div>
+        )}
+      </div>
+      <button type="button" className="be-toggle" onClick={toggle} aria-expanded={open}>
+        <span className="fp-caret">{open ? '▾' : '▸'}</span> Breakdown
+      </button>
+      {open && (
+        <table className="be-table">
+          <tbody>
+            <tr>
+              <td>Trays bought</td>
+              <td className="be-neg">−{money(be.trays)}</td>
+            </tr>
+            <tr>
+              <td>Filler bought</td>
+              <td className="be-neg">−{money(be.filler)}</td>
+            </tr>
+            <tr>
+              <td>
+                Expenses ({be.expenseCount})
+                {kinds.length > 0 && (
+                  <span className="subtle">
+                    {' '}
+                    · {kinds.map(([k, v]) => `${k} ${money(v)}`).join(' · ')}
+                  </span>
+                )}
+              </td>
+              <td className="be-neg">−{money(be.expensesTotal)}</td>
+            </tr>
+            <tr>
+              <td>
+                Wine sold ({be.wineBottles}) <span className="subtle">· paid per bottle sold</span>
+              </td>
+              <td className="be-neg">−{money(be.wineSold)}</td>
+            </tr>
+            <tr>
+              <td>
+                Paid revenue ({be.paidCount} paid order{be.paidCount === 1 ? '' : 's'}){' '}
+                <span className="subtle">· products + delivery</span>
+              </td>
+              <td className="be-pos">+{money(be.revenuePaid)}</td>
+            </tr>
+            <tr className="be-total">
+              <td>Breakeven</td>
+              <td className={pos ? 'be-pos' : 'be-neg'}>
+                {pos ? '+' : '−'}
+                {money(Math.abs(be.balance))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      <p className="hint">
+        Whole season (filters don't apply). Only orders marked Paid add revenue;
+        trays and filler count at bought × cost; expenses come from the Inventory tab.
+      </p>
+    </div>
+  );
+}
+
 export default function Financials() {
+  const [unlocked, setUnlocked] = useState(finIsUnlocked);
+  if (!unlocked) return <FinancialsLock onUnlock={() => setUnlocked(true)} />;
+  return (
+    <FinancialsInner
+      onLock={() => {
+        finSetUnlocked(false);
+        setUnlocked(false);
+      }}
+    />
+  );
+}
+
+function FinancialsInner({ onLock }) {
   const { current } = useSeason();
   const [products, setProducts] = useState(null);
   const [locations, setLocations] = useState([]);
@@ -238,6 +411,8 @@ export default function Financials() {
   const [filters, setFilters] = useState({});
   const [prodMetric, setProdMetric] = useState('count');
   const [locMetric, setLocMetric] = useState('count');
+  const [brandMetric, setBrandMetric] = useState('count');
+  const [expenses, setExpenses] = useState([]);
   const [error, setError] = useState('');
 
   const load = () =>
@@ -245,11 +420,13 @@ export default function Financials() {
       api.get('/products'),
       api.get('/delivery-locations'),
       api.get('/materials'),
+      api.get('/expenses'),
     ])
-      .then(([p, l, m]) => {
+      .then(([p, l, m, e]) => {
         setProducts(p);
         setLocations(l);
         setMaterials(m);
+        setExpenses(e);
       })
       .catch((e) => setError(e.message));
 
@@ -287,6 +464,15 @@ export default function Financials() {
         ]).map((n) => ({ value: n, label: n })),
         match: (p, v) => v.includes(p.delivery_location || ''),
       },
+      {
+        key: 'brand',
+        label: 'Brand',
+        options: [
+          ...distinctSorted(list.map((p) => p.brand_name)).map((n) => ({ value: n, label: n })),
+          { value: '', label: 'No brand' },
+        ],
+        match: (p, v) => v.includes(p.brand_name || ''),
+      },
     ];
   }, [products, locations]);
 
@@ -296,6 +482,14 @@ export default function Financials() {
   );
 
   const summary = useMemo(() => computeSummary(filtered), [filtered]);
+  const byBrand = useMemo(
+    () => groupProductRows(filtered, (p) => p.brand_name || 'No brand'),
+    [filtered]
+  );
+  const be = useMemo(
+    () => computeBreakeven(products || [], materials, expenses),
+    [products, materials, expenses]
+  );
   const byProduct = useMemo(
     () => groupProductRows(filtered, (p) => p.name || '—'),
     [filtered]
@@ -359,6 +553,22 @@ export default function Financials() {
       filters: activeFilters,
       cardGroups: [
         {
+          title: 'Breakeven (whole season)',
+          cards: [
+            card(
+              'Breakeven',
+              (be.balance >= 0 ? '+' : '-') + money(Math.abs(be.balance)),
+              be.balance.toFixed(2)
+            ),
+            card('Paid revenue (incl. delivery)', money(be.revenuePaid), be.revenuePaid.toFixed(2)),
+            card(
+              'Overhead + wine sold',
+              money(be.overhead + be.wineSold),
+              (be.overhead + be.wineSold).toFixed(2)
+            ),
+          ],
+        },
+        {
           title: 'Overview',
           cards: [
             card('Total orders', String(summary.totalOrders), summary.totalOrders),
@@ -400,6 +610,33 @@ export default function Financials() {
           title: 'By Location',
           columns: [{ label: 'Location' }, ...breakdownCols.slice(1)],
           rows: breakdownRows(byLocation),
+        },
+        {
+          title: 'By Brand',
+          columns: [{ label: 'Brand' }, ...breakdownCols.slice(1)],
+          rows: breakdownRows(byBrand),
+        },
+        {
+          title: 'Breakeven breakdown (whole season)',
+          columns: [{ label: 'Item' }, { label: 'Amount', money: true }],
+          rows: [
+            ['Trays bought', -be.trays],
+            ['Filler bought', -be.filler],
+            [`Expenses (${be.expenseCount})`, -be.expensesTotal],
+            [`Wine sold (${be.wineBottles} bottles)`, -be.wineSold],
+            [`Paid revenue (${be.paidCount} orders, incl. delivery)`, be.revenuePaid],
+            ['Breakeven', be.balance],
+          ],
+        },
+        {
+          title: 'Expenses',
+          columns: [
+            { label: 'Date' },
+            { label: 'Type', text: true },
+            { label: 'Note', text: true },
+            { label: 'Amount', money: true },
+          ],
+          rows: expenses.map((e) => [e.spent_on, e.kind, e.note, e.amount]),
         },
         {
           title: 'By Price Range ($10 steps)',
@@ -480,6 +717,11 @@ export default function Financials() {
           rows: barRows(byLocation, metricKey(locMetric)),
         },
         {
+          title: `Orders by Brand (${metricName[metricKey(brandMetric)]})`,
+          money: metricKey(brandMetric) !== 'count',
+          rows: barRows(byBrand, metricKey(brandMetric)),
+        },
+        {
           title: 'Orders by Price Point ($10 ranges, products sold)',
           rows: byPrice.map((r) => ({ label: r.label, value: r.lineItems })),
         },
@@ -549,6 +791,9 @@ export default function Financials() {
       <div className="panel-head">
         <h1>Financials</h1>
         <div className="ph-actions">
+          <button onClick={onLock} title="Lock this tab again">
+            🔒 Lock
+          </button>
           <button onClick={load}>Refresh</button>
           <button disabled={exporting} onClick={() => runExport(exportReportCsv)}>
             Export CSV
@@ -566,6 +811,8 @@ export default function Financials() {
         Live totals for every product in <strong>{current.name}</strong>. Filters
         below apply to everything on this tab.
       </p>
+
+      <Breakeven be={be} />
 
       <FilterPanel
         categories={filterCategories}
@@ -609,6 +856,7 @@ export default function Financials() {
 
       <BreakdownTable title="By Product" rows={byProduct} />
       <BreakdownTable title="By Location" rows={byLocation} />
+      <BreakdownTable title="By Brand" rows={byBrand} />
 
       <BarGraph
         title="Orders by Product Name"
@@ -621,6 +869,12 @@ export default function Financials() {
         rows={byLocation}
         metric={locMetric}
         onMetric={setLocMetric}
+      />
+      <BarGraph
+        title="Orders by Brand"
+        rows={byBrand}
+        metric={brandMetric}
+        onMetric={setBrandMetric}
       />
 
       <BarGraph

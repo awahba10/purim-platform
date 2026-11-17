@@ -5,6 +5,7 @@ const mapMaterials = (list) =>
     material_id: m.material_id,
     material_name: m.material_name,
     is_limiting: Boolean(m.is_limiting), // a tray — shown on its own "Tray" line
+    category: m.category || (m.is_limiting ? 'tray' : 'filler'),
     unit_cost: Number(m.unit_cost),
     quantity_used: Number(m.quantity_used),
     line_cost: Number(m.unit_cost) * Number(m.quantity_used),
@@ -25,6 +26,8 @@ const toProduct = (p) => ({
   delivery_charge: Number(p.delivery_charge || 0),
   delivery_instructions: p.delivery_instructions || null,
   recipient_name: p.recipient_name || null,
+  brand_id: p.brand_id != null ? Number(p.brand_id) : null,
+  brand_name: p.brand_name || null,
   gift_label_printed: Boolean(p.gift_label_printed),
   shipping_label_printed: Boolean(p.shipping_label_printed),
   materials: mapMaterials(p.materials),
@@ -98,7 +101,7 @@ async function attachMaterials(db, rows, { linkTable, fk }) {
   if (!rows.length) return [];
   const { rows: links } = await db.query(
     `SELECT lk.${fk} AS owner_id, lk.material_id, lk.quantity_used,
-            m.name AS material_name, m.cost AS unit_cost, m.is_limiting
+            m.name AS material_name, m.cost AS unit_cost, m.is_limiting, m.category
        FROM ${linkTable} lk
        JOIN materials m ON m.id = lk.material_id
       WHERE lk.${fk} = ANY($1::int[])
@@ -143,6 +146,15 @@ async function adjustStock(db, seasonId, materialId, delta) {
   );
 }
 
+// A brand id that exists, or null (blank / missing).
+async function cleanBrand(db, raw) {
+  const id = Number(raw);
+  if (!id) return null;
+  const { rows } = await db.query('SELECT id FROM brands WHERE id = $1', [id]);
+  if (!rows.length) throw Object.assign(new Error('That brand no longer exists'), { status: 400 });
+  return id;
+}
+
 // Insert one product under an order, link its materials, and take the stock
 // from the order's season.
 async function insertProduct(client, orderId, input) {
@@ -168,6 +180,7 @@ async function insertProduct(client, orderId, input) {
     ? null
     : (input.delivery_instructions || '').trim() || null;
   const recipientName = (input.recipient_name || '').trim() || null;
+  const brandId = await cleanBrand(client, input.brand_id);
 
   if (!isPickup && !address) {
     throw Object.assign(new Error('Delivery products need an address'), {
@@ -184,8 +197,8 @@ async function insertProduct(client, orderId, input) {
     `INSERT INTO products
        (order_id, name, address, notes, gift_message, cost, price,
         fulfillment, delivery_location, delivery_charge,
-        delivery_instructions, recipient_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+        delivery_instructions, recipient_name, brand_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
     [
       orderId,
       name,
@@ -199,6 +212,7 @@ async function insertProduct(client, orderId, input) {
       deliveryCharge,
       deliveryInstructions,
       recipientName,
+      brandId,
     ]
   );
   const productId = rows[0].id;
@@ -297,9 +311,10 @@ async function fetchOrderFull(db, orderId) {
   );
   if (!orders.length) return null;
   const { rows: products } = await db.query(
-    `SELECT p.*, b.name AS batch_name
+    `SELECT p.*, b.name AS batch_name, br.name AS brand_name
        FROM products p
        LEFT JOIN batches b ON b.id = p.batch_id
+       LEFT JOIN brands br ON br.id = p.brand_id
       WHERE p.order_id = $1
       ORDER BY p.id`,
     [orderId]
@@ -322,4 +337,5 @@ module.exports = {
   addNeeds,
   assertTrayStock,
   adjustStock,
+  cleanBrand,
 };

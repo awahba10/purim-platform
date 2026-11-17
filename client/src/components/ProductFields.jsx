@@ -3,6 +3,7 @@ import { money, round2, suggestedCostOf, presetToDraftPatch, DELIVERY_QUICK } fr
 import MaterialPicker from './MaterialPicker';
 import PresetChip from './PresetChip';
 import AnchorChip from './AnchorChip';
+import PickChip from './PickChip';
 
 function Addon({ label, hint, on, onToggle, children }) {
   return (
@@ -32,6 +33,12 @@ export default function ProductFields({
   onDuplicate,
   title,
   stockErrors, // optional string[] — tray stock errors (block saving)
+  stockWarnings, // optional string[] — filler / wine running low (never block)
+  brands, // optional [{ id, name }] — shows the Brand chip
+  collapsed, // optional — show only the one-line summary
+  onToggleCollapse, // optional — shows the ▾ / ▸ toggle
+  summary, // optional node — the collapsed line
+  hasProblem, // optional — red ⚠ on the collapsed line
 }) {
   const dlId = 'dl' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const set = (patch) => onChange({ ...value, ...patch });
@@ -81,9 +88,28 @@ export default function ProductFields({
 
   return (
     <div className="product-fields">
-      {(title || onRemove || onDuplicate) && (
-        <div className="pf-head">
-          <strong>{title || 'Product'}</strong>
+      {(title || onRemove || onDuplicate || onToggleCollapse) && (
+        <div className={'pf-head' + (collapsed ? ' collapsed' : '')}>
+          {onToggleCollapse ? (
+            <button
+              type="button"
+              className="pf-toggle"
+              onClick={onToggleCollapse}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Expand' : 'Collapse'}
+            >
+              <span className="fp-caret">{collapsed ? '▸' : '▾'}</span>
+              <strong>{title || 'Product'}</strong>
+              {collapsed && summary && <span className="pf-summary">{summary}</span>}
+              {collapsed && hasProblem && (
+                <span className="pf-problem" title="Something in this product needs attention">
+                  ⚠
+                </span>
+              )}
+            </button>
+          ) : (
+            <strong>{title || 'Product'}</strong>
+          )}
           <span className="pf-head-actions">
             {onDuplicate && (
               <button type="button" className="btn-sm" onClick={onDuplicate}>
@@ -99,6 +125,8 @@ export default function ProductFields({
         </div>
       )}
 
+      {!collapsed && (
+      <>
       {/* ---------- 1 · Product Details ---------- */}
       <div className="pf-section">
         <div className="pf-section-title">1 · Product Details</div>
@@ -107,6 +135,13 @@ export default function ProductFields({
           <div className="stock-error" role="alert">
             {stockErrors.map((w) => (
               <div key={w}>{w}</div>
+            ))}
+          </div>
+        )}
+        {stockWarnings && stockWarnings.length > 0 && (
+          <div className="stock-warn">
+            {stockWarnings.map((w) => (
+              <div key={w}>⚠ {w}</div>
             ))}
           </div>
         )}
@@ -131,6 +166,20 @@ export default function ProductFields({
             placeholder="Chocolate & wine tray"
           />
         </label>
+
+        {brands && (
+          <div>
+            <div className="fld-label">Brand</div>
+            <PickChip
+              value={value.brand_id ?? null}
+              options={brands.map((b) => ({ id: b.id, label: b.name }))}
+              onPick={(id) => set({ brand_id: id })}
+              placeholder="No brand — choose one"
+              noneLabel="No brand"
+              emptyText="No brands yet — add them on the Locations & Brands tab."
+            />
+          </div>
+        )}
 
         <div>
           <div className="fld-label">Tray</div>
@@ -366,6 +415,8 @@ export default function ProductFields({
           />
         </Addon>
       </div>
+      </>
+      )}
     </div>
   );
 }

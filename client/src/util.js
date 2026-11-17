@@ -32,6 +32,7 @@ export const newProductDraft = () => ({
   price: '',
   cost: '',
   costTouched: false,
+  brand_id: null,
   materials: [], // [{ material_id, quantity_used }]
   // Section 2 — Fulfillment
   fulfillment: 'Delivery',
@@ -66,6 +67,7 @@ export const productToDraft = (p) => ({
   delivery_instructions: p.delivery_instructions || '',
   delivery_charge: String(p.delivery_charge ?? '0'),
   dcOther: !isQuickCharge(p.delivery_charge ?? 0),
+  brand_id: p.brand_id ?? null,
   recipientOn: !!(p.recipient_name && p.recipient_name.trim()),
   recipient_name: p.recipient_name || '',
   giftOn: !!(p.gift_message && p.gift_message.trim()),
@@ -77,6 +79,8 @@ export const productToDraft = (p) => ({
 // The fields a premade preset fills into a product draft. Everything stays
 // editable afterward, same as a from-scratch product.
 export const presetToDraftPatch = (preset) => ({
+  // The preset's default brand, if it has one (otherwise keep the current).
+  ...(preset.brand_id ? { brand_id: preset.brand_id } : {}),
   name: preset.name || '',
   price: String(preset.price ?? ''),
   cost: String(preset.cost ?? ''),
@@ -98,6 +102,7 @@ export const draftToPayload = (d, catalog) => {
     delivery_instructions: pickup ? '' : d.delivery_instructions.trim(),
     delivery_charge: pickup ? 0 : Number(d.delivery_charge) || 0,
     recipient_name: d.recipientOn ? d.recipient_name.trim() : '',
+    brand_id: d.brand_id || null,
     gift_message: d.giftOn ? d.gift_message.trim() : '',
     notes: d.notesOn ? d.notes.trim() : '',
     price: Number(d.price) || 0,
@@ -365,3 +370,64 @@ export function splitTrays(materials, catalog) {
 
 export const matText = (list, nameOf = (m) => m.material_name) =>
   list.map((m) => `${nameOf(m)} ×${m.quantity_used}`).join(', ');
+
+// --- Inventory categories ----------------------------------------------------
+// tray:    bought once before the season; caps sales, never below zero; overhead
+// filler:  bought once; can run out (warn only — swap items); overhead
+// wine:    pay only for what sells; tracked, not overhead (cost of sold = owed)
+// grocery: bought on grocery runs; unlimited here; spending logged as expenses
+export const CATEGORIES = [
+  { key: 'tray', label: 'Trays', one: 'Tray' },
+  { key: 'filler', label: 'Filler', one: 'Filler' },
+  { key: 'wine', label: 'Wine', one: 'Wine' },
+  { key: 'grocery', label: 'Grocery', one: 'Grocery' },
+];
+export const categoryOf = (m) =>
+  (m && m.category) || (m && m.is_limiting ? 'tray' : 'filler');
+export const categoryLabel = (key) =>
+  (CATEGORIES.find((c) => c.key === key) || CATEGORIES[1]).one;
+
+export const EXPENSE_KINDS = ['Grocery', 'Packaging', 'Supplies', 'Delivery', 'Other'];
+
+export const todayISO = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+// Soft (non-blocking) warnings for filler and wine that would run out, keyed
+// by draft _key. Trays are handled by trayErrors (blocking); grocery is
+// unlimited.
+export function softStockWarnings(drafts, catalog) {
+  const watched = {};
+  for (const m of catalog) {
+    const c = categoryOf(m);
+    if (c === 'filler' || c === 'wine') watched[m.id] = m;
+  }
+  const demand = {};
+  for (const d of drafts) {
+    for (const m of d.materials) {
+      if (watched[m.material_id]) {
+        demand[m.material_id] = (demand[m.material_id] || 0) + qtyOf(m.quantity_used);
+      }
+    }
+  }
+  const out = {};
+  for (const d of drafts) {
+    const list = [];
+    for (const m of d.materials) {
+      const it = watched[m.material_id];
+      if (!it) continue;
+      const left = Number(it.quantity) || 0;
+      const need = demand[m.material_id];
+      if (need <= left) continue;
+      list.push(
+        left <= 0
+          ? `${it.name} is out of stock — swap it or restock (the order can still go through).`
+          : `Only ${left} ${it.name} left — this needs ${need}. You can still continue.`
+      );
+    }
+    if (list.length) out[d._key] = list;
+  }
+  return out;
+}

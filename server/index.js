@@ -23,6 +23,8 @@ app.use('/api/batches', require('./routes/batches'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/financials', require('./routes/financials'));
+app.use('/api/brands', require('./routes/brands'));
+app.use('/api/expenses', require('./routes/expenses'));
 
 // Serve the built React app in production.
 const clientDist = path.join(__dirname, '..', 'client', 'dist');

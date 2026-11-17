@@ -5,7 +5,8 @@ import { api, setApiSeason } from './api';
 // a choice made with the switcher is remembered for this browser tab (so
 // refreshes and navigation keep it) but a fresh visit opens on Active again.
 // "Unlocked" is never remembered: switching seasons or reloading relocks.
-const Ctx = createContext(null);
+export const SeasonCtx = createContext(null);
+const Ctx = SeasonCtx;
 const KEY = 'purim.seasonId';
 
 const readStored = () => {

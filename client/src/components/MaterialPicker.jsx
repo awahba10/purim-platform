@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import { money } from '../util';
+import { money, CATEGORIES, categoryOf } from '../util';
 
 // Material selector for REGULAR materials. Every non-tray material shows as a
 // tappable chip; the search box only filters which chips are shown. `value` is
 // the full [{ material_id, quantity_used }] list: trays (limiting stock) are
 // kept in it untouched but neither offered nor listed here — they have their
-// own Tray / Anchor tray field.
+// own Tray / Anchor tray field. Chips are grouped Filler → Wine → Grocery,
+// each group led by a small inline label; grocery shows ∞ (unlimited) and
+// filler/wine that has run out shows an amber "out" tag (it can still be used).
 export default function MaterialPicker({ catalog, value, onChange }) {
   const [q, setQ] = useState('');
 
@@ -50,18 +52,35 @@ export default function MaterialPicker({ catalog, value, onChange }) {
               : 'No matching materials.'}
           </span>
         )}
-        {chips.map((m) => (
-          <button
-            type="button"
-            key={m.id}
-            className="chip"
-            onClick={() => add(m.id)}
-            title={`${money(m.cost)} each · ${m.quantity} in stock`}
-          >
-            + {m.name}
-            <span className="chip-cost">{money(m.cost)}</span>
-          </button>
-        ))}
+        {CATEGORIES.filter((c) => c.key !== 'tray').map((c) => {
+          const group = chips.filter((m) => categoryOf(m) === c.key);
+          if (!group.length) return null;
+          return [
+            <span key={'h-' + c.key} className={'mp-group cat-' + c.key}>
+              {c.label}
+            </span>,
+            ...group.map((m) => {
+              const unlimited = c.key === 'grocery';
+              const out = !unlimited && m.quantity <= 0;
+              return (
+                <button
+                  type="button"
+                  key={m.id}
+                  className={'chip' + (out ? ' chip-out' : '')}
+                  onClick={() => add(m.id)}
+                  title={`${money(m.cost)} each · ${
+                    unlimited ? 'unlimited' : `${m.quantity} in stock`
+                  }`}
+                >
+                  + {m.name}
+                  <span className="chip-cost">{money(m.cost)}</span>
+                  {unlimited && <span className="chip-inf">∞</span>}
+                  {out && <span className="chip-outtag">out</span>}
+                </button>
+              );
+            }),
+          ];
+        })}
       </div>
 
       {shownValue.length > 0 && (

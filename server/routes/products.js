@@ -7,16 +7,18 @@ const {
   restoreProductMaterials,
   addNeeds,
   assertTrayStock,
+  cleanBrand,
 } = require('../lib/products');
 const { assertWritable, seasonOfProduct, seasonOfBatch } = require('../lib/seasons');
 
 const SELECT_PRODUCT = `
   SELECT p.*, o.ticket_number, o.customer_name, o.payment_status,
          o.payment_method, o.phone, o.created_at AS order_created_at,
-         b.name AS batch_name
+         b.name AS batch_name, br.name AS brand_name
     FROM products p
     JOIN orders o ON o.id = p.order_id
     LEFT JOIN batches b ON b.id = p.batch_id
+    LEFT JOIN brands br ON br.id = p.brand_id
 `;
 
 // LIST every product across all orders (one row per product).
@@ -89,6 +91,7 @@ router.patch('/:id', async (req, res, next) => {
     if (f.delivery_instructions !== undefined) {
       put('delivery_instructions', String(f.delivery_instructions).trim() || null);
     }
+    if (f.brand_id !== undefined) put('brand_id', await cleanBrand(client, f.brand_id));
     if (f.recipient_name !== undefined) {
       put('recipient_name', String(f.recipient_name).trim() || null);
     }

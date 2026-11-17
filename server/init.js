@@ -25,6 +25,7 @@ async function init() {
 
   await migrateToSeasons();
   await adoptStragglers();
+  await backfillBoughtQuantities();
 
   const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM materials');
   if (rows[0].n === 0) {
@@ -155,6 +156,47 @@ async function migrateToSeasons() {
     );
     await client.query('COMMIT');
     console.log('[init] Season migration complete:', JSON.stringify(report));
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// One-time: filler and wine now have a "bought" (starting) quantity like
+// trays. For stock rows that don't have one yet, it's what's in stock now plus
+// what that season's orders already used. Nothing else is changed.
+async function backfillBoughtQuantities() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT 1 FROM app_meta WHERE key = 'bought_backfill' FOR UPDATE`
+    );
+    if (rows.length) {
+      await client.query('COMMIT');
+      return;
+    }
+    const r = await client.query(
+      `UPDATE material_stock ms
+          SET starting_quantity = ms.quantity + COALESCE((
+                SELECT SUM(pm.quantity_used)
+                  FROM product_materials pm
+                  JOIN products p ON p.id = pm.product_id
+                  JOIN orders o ON o.id = p.order_id
+                 WHERE pm.material_id = ms.material_id AND o.season_id = ms.season_id
+              ), 0)
+        WHERE ms.starting_quantity IS NULL
+          AND ms.material_id IN (SELECT id FROM materials WHERE category IN ('filler', 'wine'))`
+    );
+    await client.query(
+      `INSERT INTO app_meta (key, value) VALUES ('bought_backfill', $1)
+       ON CONFLICT (key) DO NOTHING`,
+      [JSON.stringify({ rows: r.rowCount, ran_at: new Date().toISOString() })]
+    );
+    await client.query('COMMIT');
+    console.log(`[init] Filled in bought quantity for ${r.rowCount} filler/wine stock rows.`);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

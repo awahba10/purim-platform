@@ -5,7 +5,7 @@ export const NAV = [
   { label: 'Items', path: '/items', icon: '🎁' },
   { label: 'Inventory', path: '/inventory', icon: '📦' },
   { label: 'Premade Products', path: '/premade', icon: '⭐' },
-  { label: 'Delivery Cost', path: '/delivery-cost', icon: '🚚' },
+  { label: 'Locations & Brands', path: '/delivery-cost', icon: '🏷️' },
   { label: 'Delivery Batches', path: '/batches', icon: '🗺️' },
   { label: 'Production', path: '/production', icon: '🔨' },
   { label: 'Financials', path: '/financials', icon: '💰' },

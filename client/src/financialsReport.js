@@ -405,3 +405,56 @@ export function exportReportPdf(report) {
 
   doc.save(`purim-financials-${report.fileSlug || 'season'}-${dayKey(report.generated)}.pdf`);
 }
+
+// Breakeven for the whole season (filters don't apply — it's about money in
+// vs. money spent). Revenue counts only PAID orders (product price + delivery
+// charge). Every order placed takes off the wine it used (you pay for wine
+// that sells). Overhead = trays bought + filler bought (bought × cost each)
+// + every expense logged.
+export function computeBreakeven(products, materials, expenses) {
+  const catOf = (m) => m.category || (m.is_limiting ? 'tray' : 'filler');
+  const boughtCost = (cat) =>
+    materials
+      .filter((m) => catOf(m) === cat)
+      .reduce((s, m) => s + (Number(m.starting_quantity) || 0) * (Number(m.cost) || 0), 0);
+  const trays = boughtCost('tray');
+  const filler = boughtCost('filler');
+  const expensesTotal = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const expenseKinds = {};
+  for (const e of expenses) expenseKinds[e.kind] = (expenseKinds[e.kind] || 0) + Number(e.amount);
+
+  let revenuePaid = 0;
+  let paidCount = 0;
+  let wineSold = 0;
+  let wineBottles = 0;
+  const paidOrders = new Set();
+  for (const p of products) {
+    if (p.payment_status === 'Paid') {
+      revenuePaid += (Number(p.price) || 0) + (Number(p.delivery_charge) || 0);
+      paidOrders.add(p.order_id);
+    }
+    for (const m of p.materials || []) {
+      if ((m.category || 'filler') === 'wine') {
+        wineSold += (Number(m.unit_cost) || 0) * (Number(m.quantity_used) || 0);
+        wineBottles += Number(m.quantity_used) || 0;
+      }
+    }
+  }
+  paidCount = paidOrders.size;
+  const overhead = trays + filler + expensesTotal;
+  const earned = revenuePaid - wineSold;
+  return {
+    trays,
+    filler,
+    expensesTotal,
+    expenseCount: expenses.length,
+    expenseKinds,
+    revenuePaid,
+    paidCount,
+    wineSold,
+    wineBottles,
+    overhead,
+    balance: earned - overhead,
+    progress: overhead > 0 ? Math.max(0, earned) / overhead : null,
+  };
+}
