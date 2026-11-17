@@ -64,6 +64,7 @@ export default function AnchorChip({
         ref={btnRef}
         type="button"
         className={'chip-toggle ' + (current ? 'set' : 'unset')}
+        title={current ? current.name : undefined}
         disabled={disabled}
         onClick={toggle}
       >

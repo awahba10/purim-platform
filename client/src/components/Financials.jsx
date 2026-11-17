@@ -288,24 +288,10 @@ function FinancialsLock({ onUnlock }) {
 }
 
 // Breakeven: overhead spent vs. paid revenue, with a collapsible breakdown.
-const BE_OPEN_KEY = 'mw.breakeven.open';
 export function Breakeven({ be }) {
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(BE_OPEN_KEY) !== '0';
-    } catch {
-      return true;
-    }
-  });
-  const toggle = () =>
-    setOpen((o) => {
-      try {
-        localStorage.setItem(BE_OPEN_KEY, o ? '0' : '1');
-      } catch {
-        /* storage unavailable */
-      }
-      return !o;
-    });
+  // Always starts collapsed; open it to see the breakdown.
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((o) => !o);
   const pos = be.balance >= 0;
   const pct = be.progress == null ? null : Math.min(1, be.progress);
   const kinds = Object.entries(be.expenseKinds).sort((a, b) => b[1] - a[1]);
@@ -553,22 +539,6 @@ function FinancialsInner({ onLock }) {
       filters: activeFilters,
       cardGroups: [
         {
-          title: 'Breakeven (whole season)',
-          cards: [
-            card(
-              'Breakeven',
-              (be.balance >= 0 ? '+' : '-') + money(Math.abs(be.balance)),
-              be.balance.toFixed(2)
-            ),
-            card('Paid revenue (incl. delivery)', money(be.revenuePaid), be.revenuePaid.toFixed(2)),
-            card(
-              'Overhead + wine sold',
-              money(be.overhead + be.wineSold),
-              (be.overhead + be.wineSold).toFixed(2)
-            ),
-          ],
-        },
-        {
           title: 'Overview',
           cards: [
             card('Total orders', String(summary.totalOrders), summary.totalOrders),
@@ -599,8 +569,36 @@ function FinancialsInner({ onLock }) {
             card('Total profit', money(summary.profit.total), summary.profit.total.toFixed(2)),
           ],
         },
+        {
+          title: 'Breakeven (whole season)',
+          cards: [
+            card(
+              'Breakeven',
+              (be.balance >= 0 ? '+' : '-') + money(Math.abs(be.balance)),
+              be.balance.toFixed(2)
+            ),
+            card('Paid revenue (incl. delivery)', money(be.revenuePaid), be.revenuePaid.toFixed(2)),
+            card(
+              'Overhead + wine sold',
+              money(be.overhead + be.wineSold),
+              (be.overhead + be.wineSold).toFixed(2)
+            ),
+          ],
+        },
       ],
       tables: [
+        {
+          title: 'Breakeven breakdown (whole season)',
+          columns: [{ label: 'Item' }, { label: 'Amount', money: true }],
+          rows: [
+            ['Trays bought', -be.trays],
+            ['Filler bought', -be.filler],
+            [`Expenses (${be.expenseCount})`, -be.expensesTotal],
+            [`Wine sold (${be.wineBottles} bottles)`, -be.wineSold],
+            [`Paid revenue (${be.paidCount} orders, incl. delivery)`, be.revenuePaid],
+            ['Breakeven', be.balance],
+          ],
+        },
         {
           title: 'By Product',
           columns: [{ label: 'Product' }, ...breakdownCols.slice(1)],
@@ -615,18 +613,6 @@ function FinancialsInner({ onLock }) {
           title: 'By Brand',
           columns: [{ label: 'Brand' }, ...breakdownCols.slice(1)],
           rows: breakdownRows(byBrand),
-        },
-        {
-          title: 'Breakeven breakdown (whole season)',
-          columns: [{ label: 'Item' }, { label: 'Amount', money: true }],
-          rows: [
-            ['Trays bought', -be.trays],
-            ['Filler bought', -be.filler],
-            [`Expenses (${be.expenseCount})`, -be.expensesTotal],
-            [`Wine sold (${be.wineBottles} bottles)`, -be.wineSold],
-            [`Paid revenue (${be.paidCount} orders, incl. delivery)`, be.revenuePaid],
-            ['Breakeven', be.balance],
-          ],
         },
         {
           title: 'Expenses',
@@ -812,8 +798,6 @@ function FinancialsInner({ onLock }) {
         below apply to everything on this tab.
       </p>
 
-      <Breakeven be={be} />
-
       <FilterPanel
         categories={filterCategories}
         state={filters}
@@ -853,6 +837,8 @@ function FinancialsInner({ onLock }) {
         />
         <Card label="Total profit" value={money(summary.profit.total)} />
       </div>
+
+      <Breakeven be={be} />
 
       <BreakdownTable title="By Product" rows={byProduct} />
       <BreakdownTable title="By Location" rows={byLocation} />

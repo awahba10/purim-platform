@@ -227,12 +227,12 @@ export function exportReportPdf(report) {
   const M = 40;
   const CW = PW - 2 * M;
   const BOTTOM = PH - M - 14; // leave room for the page footer
-  // Site palette: Cocoa, light khaki, muted brown, Espresso, khaki line.
-  const BRAND = [125, 90, 68];
-  const SOFT = [239, 230, 218];
-  const MUTED = [115, 95, 80];
-  const INK = [74, 52, 42];
-  const LINE = [228, 217, 203];
+  // Site palette: black, light grey, mid grey, near-black text, grey line.
+  const BRAND = [17, 17, 17];
+  const SOFT = [236, 236, 236];
+  const MUTED = [102, 102, 102];
+  const INK = [17, 17, 17];
+  const LINE = [227, 227, 227];
   let y = M;
 
   const ensure = (h) => {

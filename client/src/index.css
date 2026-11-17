@@ -1,38 +1,38 @@
 :root {
-  /* Site palette — "Cozy Coffee Neutrals":
-     Linen #F5F1EA · Khaki #D7C9B8 · Camel #B2967D · Cocoa #7D5A44 · Espresso #4A342A */
-  --bg: #f5f1ea; /* Linen: page background */
-  --panel: #fffdfa; /* warm white: cards, tables, inputs */
-  --surface-2: #faf6f0; /* table headers, bars */
-  --surface-3: #f1ebe2; /* product entry backdrop */
-  --ink: #4a342a; /* Espresso: text */
-  --muted: #735f50; /* secondary text */
-  --line: #e4d9cb; /* soft khaki borders */
-  --line-strong: #d7c9b8; /* Khaki */
-  --hover: #f3ece2; /* row / button hover */
-  --hover-soft: #faf5ee;
-  --neutral: #efe8de; /* idle chips */
-  --neutral-line: #e2d6c7;
-  --brand: #7d5a44; /* Cocoa: primary buttons, active tab, accents */
-  --brand-strong: #4a342a; /* Espresso: primary hover */
-  --brand-soft: #efe6da; /* light khaki: selected / active fills */
-  --brand-soft-strong: #e6d8c6;
-  --accent: #b2967d; /* Camel: secondary accent */
-  --tray: #5e4334; /* "Tray" / "Limiting" tags */
-  --tray-bg: #eadccb;
-  --tray-row: #faf4ec;
-  /* Inventory category tints (identity only, not status) */
-  --cat-tray: #5e4334;
-  --cat-tray-bg: #eadccb;
-  --cat-filler: #7a5a2c;
-  --cat-filler-bg: #f3e7d3;
-  --cat-wine: #6e3b3f;
-  --cat-wine-bg: #ecdcdc;
-  --cat-grocery: #4f5a3c;
-  --cat-grocery-bg: #e3e6d8;
-  --cat-expense: #4a342a;
-  --cat-expense-bg: #e4ddd5;
-  --shadow: 74, 52, 42; /* rgb of Espresso for shadows/overlays */
+  /* Site palette: black and white with greys as accents. */
+  --bg: #f7f7f7; /* page background */
+  --panel: #ffffff; /* cards, tables, inputs */
+  --surface-2: #fafafa; /* table headers, bars */
+  --surface-3: #f2f2f2; /* product entry backdrop */
+  --ink: #111111; /* text */
+  --muted: #666666; /* secondary text */
+  --line: #e3e3e3; /* borders */
+  --line-strong: #cfcfcf;
+  --hover: #f0f0f0; /* row / button hover */
+  --hover-soft: #f7f7f7;
+  --neutral: #eeeeee; /* idle chips */
+  --neutral-line: #dddddd;
+  --brand: #111111; /* black: primary buttons, active tab, selected chips */
+  --brand-strong: #000000; /* primary hover */
+  --brand-soft: #ececec; /* light grey: selected / active fills */
+  --brand-soft-strong: #e0e0e0;
+  --accent: #8a8a8a; /* mid grey: secondary accent */
+  --tray: #3d4470; /* "Tray" / "Limiting" tags (same as the tray category) */
+  --tray-bg: #e6e8f3;
+  --tray-row: #f8f9fc;
+  /* Inventory category tints (identity only, not status): one soft, muted
+     family so they sit quietly on black and white. */
+  --cat-tray: #3d4470; /* dusty indigo */
+  --cat-tray-bg: #e6e8f3;
+  --cat-filler: #2c6464; /* muted teal */
+  --cat-filler-bg: #dff0ee;
+  --cat-wine: #74365a; /* plum */
+  --cat-wine-bg: #f3e3ec;
+  --cat-grocery: #5f5a2e; /* olive */
+  --cat-grocery-bg: #eeecdc;
+  --cat-expense: #333333; /* charcoal */
+  --cat-expense-bg: #e8e8e8;
+  --shadow: 0, 0, 0; /* rgb for shadows/overlays */
 
   /* Status colours — these "tell you something" and stay as they were:
      green = done (Made / Delivered / Paid), amber = not yet / warning,
@@ -775,8 +775,9 @@ td.right button {
   flex-wrap: wrap;
   align-content: flex-start;
   gap: 6px;
-  /* Exactly two rows of 32px chips (+ gap, padding, border); more scrolls. */
-  max-height: calc(32px * 2 + 6px + 8px * 2 + 2px);
+  /* A section label plus two rows of 32px chips (+ gaps, padding, border);
+     more scrolls. */
+  max-height: calc(22px + 32px * 2 + 6px * 2 + 8px * 2 + 2px);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 8px;
@@ -1273,15 +1274,15 @@ td.right button {
   border: none;
   background: none;
   border-radius: 0;
-  padding: 8px 2px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 8px 2px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-.fp-cat-head:hover {
-  background: var(--hover);
 }
 .fp-chips {
   display: flex;
@@ -1889,10 +1890,27 @@ td.right button {
   flex-wrap: wrap;
   gap: 10px;
 }
-.tray-field .chip-toggle {
-  max-width: 260px;
-  padding: 6px 12px;
+/* Preset, Brand and Tray chips on product forms: all one size. Long names
+   are cut off with "…" (full name on hover). */
+.product-fields .chip-toggle {
+  display: inline-block;
+  width: 240px;
+  max-width: 100%;
+  height: 34px;
+  padding: 0 14px;
   font-size: 13px;
+  line-height: 32px;
+  text-align: left;
+}
+@media (max-width: 640px) {
+  .product-fields .chip-toggle {
+    width: 100%;
+  }
+  .tray-field .chip-toggle {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 .tray-qty {
   display: inline-flex !important;
@@ -2023,15 +2041,23 @@ td.right button {
 }
 
 /* Materials picker: group labels, unlimited and out tags */
+/* Each section (Filler / Wine / Grocery) starts on its own line, with a thin
+   divider above every section after the first. */
 .mp-group {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 4px;
+  display: flex;
+  align-items: flex-end;
+  flex: 0 0 100%;
+  height: 22px;
+  padding: 0 2px 2px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+.mp-group ~ .mp-group {
+  border-top: 1px solid var(--line-strong);
+  margin-top: 4px;
+  height: 28px;
 }
 .mp-group.cat-filler { color: var(--cat-filler); }
 .mp-group.cat-wine { color: var(--cat-wine); }
@@ -2064,7 +2090,7 @@ td.right button {
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(255, 253, 250, 0.96);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 4px 12px rgba(var(--shadow), 0.08);
   font-weight: 600;
 }

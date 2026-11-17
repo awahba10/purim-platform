@@ -38,8 +38,9 @@ Ten tabs down the left side (the sidebar is always visible):
 
 ### Colours
 
-The site uses the "Cozy Coffee Neutrals" palette (Linen, Khaki, Camel, Cocoa,
-Espresso), defined once as variables at the top of `client/src/index.css`.
+The site is black and white with greys as accents, defined once as variables
+at the top of `client/src/index.css`. Inventory categories (Trays, Filler,
+Wine, Grocery) each have a soft muted tint so they are easy to tell apart.
 Status colours keep their meaning and were not changed: green = done (Made,
 Delivered, Paid), amber = not yet / warning, blue = partway (Some Made,
 Partially Paid), red = error or destructive action.

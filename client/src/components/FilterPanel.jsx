@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-// Reusable collapsible filter panel. Used by Products, All Orders, Financials.
+// Reusable collapsible filter panel (opening it shows every category's chips). Used by Products, All Orders, Financials.
 //
 // props:
 //   categories: [{ key, label, options: [{ value, label }] }]
@@ -8,7 +8,6 @@ import { useState } from 'react';
 //   onChange:   (nextState) => void
 export default function FilterPanel({ categories, state, onChange }) {
   const [panelOpen, setPanelOpen] = useState(false);
-  const [openCats, setOpenCats] = useState(() => new Set());
 
   const totalSelected = categories.reduce(
     (n, c) => n + (state[c.key] || []).length,
@@ -25,14 +24,6 @@ export default function FilterPanel({ categories, state, onChange }) {
     onChange(nextState);
   };
 
-  const toggleCat = (key) =>
-    setOpenCats((s) => {
-      const n = new Set(s);
-      if (n.has(key)) n.delete(key);
-      else n.add(key);
-      return n;
-    });
-
   return (
     <div className="filter-panel">
       <button
@@ -48,22 +39,13 @@ export default function FilterPanel({ categories, state, onChange }) {
         <div className="fp-body">
           {categories.map((cat) => {
             const sel = state[cat.key] || [];
-            const open = openCats.has(cat.key);
             return (
               <div className="fp-cat" key={cat.key}>
-                <button
-                  type="button"
-                  className="fp-cat-head"
-                  onClick={() => toggleCat(cat.key)}
-                >
-                  <span>
-                    <span className="fp-caret">{open ? '▾' : '▸'}</span>{' '}
-                    {cat.label}
-                  </span>
+                <div className="fp-cat-head">
+                  <span>{cat.label}</span>
                   {sel.length > 0 && <span className="fp-badge">{sel.length}</span>}
-                </button>
-                {open && (
-                  <div className="fp-chips">
+                </div>
+                <div className="fp-chips">
                     {cat.options.length === 0 && (
                       <span className="subtle">No options yet</span>
                     )}
@@ -80,8 +62,7 @@ export default function FilterPanel({ categories, state, onChange }) {
                         {o.label}
                       </button>
                     ))}
-                  </div>
-                )}
+                </div>
               </div>
             );
           })}

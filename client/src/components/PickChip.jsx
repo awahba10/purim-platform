@@ -54,6 +54,7 @@ export default function PickChip({
         ref={btnRef}
         type="button"
         className={'chip-toggle ' + (current ? 'set' : 'unset')}
+        title={current ? current.label : undefined}
         disabled={disabled}
         onClick={toggle}
       >
